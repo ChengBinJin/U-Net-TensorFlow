@@ -27,7 +27,7 @@ def make_folders(is_train, cur_time=None):
     return model_dir, log_dir
 
 
-def imshow(img, label, alpha=0.6):
+def imshow(img, label, idx, alpha=0.6, delay=1, log_dir=None):
     if len(img.shape) == 2:
         img = np.dstack((img, img, img))
 
@@ -45,8 +45,10 @@ def imshow(img, label, alpha=0.6):
     canvas = np.hstack((img, pseudo_label, overlap))
     cv2.imshow('Show', canvas)
 
-    if cv2.waitKey(0) & 0xFF == 27:
+    if cv2.waitKey(delay) & 0xFF == 27:
         sys.exit('Esc clicked!')
+
+    cv2.imwrite(os.path.join(log_dir, str(idx).zfill(2) + '.png'), canvas)
 
 def pseudoColor(label, thickness=3):
     img = label.copy()

@@ -15,12 +15,11 @@ from utils import make_folders
 FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string('gpu_index', '0', 'gpu index if you have multiple gpus, default: 0')
 tf.flags.DEFINE_string('dataset', 'EMSegmentation', 'dataset name, default: EMSegmentation')
-tf.flags.DEFINE_integer('batch_size', 8, 'batch size for one iteration, default: 8')
+tf.flags.DEFINE_integer('batch_size', 2, 'batch size for one iteration, default: 8')
 tf.flags.DEFINE_bool('is_train', True, 'training or inference mode, default: True')
 tf.flags.DEFINE_float('learning_rate', 1e-3, 'initial learning rate for optimizer, default: 0.001')
 tf.flags.DEFINE_float('weight_decay', 1e-4, 'weight decay for model to handle overfitting, default: 0.0001')
-tf.flags.DEFINE_integer('epochs', 5, 'number of epochs, default: 5')
-tf.flags.DEFINE_integer('iters', 2000, 'number of iterations for one epoch, default: 2000')
+tf.flags.DEFINE_integer('iters', 10, 'number of iterations for one epoch, default: 10,000')
 tf.flags.DEFINE_integer('print_freq', 50, 'print frequency for loss information, default: 50')
 tf.flags.DEFINE_string('load_model', None, 'folder of saved model that you wish to continue training '
                                            '(e.g. 20190524-1606), default: None')
@@ -51,7 +50,6 @@ def init_logger(log_dir, is_train=True):
         logger.info('is_train: \t\t{}'.format(FLAGS.is_train))
         logger.info('learning_rate: \t{}'.format(FLAGS.learning_rate))
         logger.info('weight_decay: \t\t{}'.format(FLAGS.weight_decay))
-        logger.info('epochs: \t\t{}'.format(FLAGS.epochs))
         logger.info('iters: \t\t{}'.format(FLAGS.iters))
         logger.info('print_freq: \t\t{}'.format(FLAGS.print_freq))
         logger.info('load_model: \t\t{}'.format(FLAGS.load_model))
@@ -62,7 +60,6 @@ def init_logger(log_dir, is_train=True):
         print('-- is_train: \t\t{}'.format(FLAGS.is_train))
         print('-- learning_rate: \t{}'.format(FLAGS.learning_rate))
         print('-- weight_decay: \t\t{}'.format(FLAGS.weight_decay))
-        print('-- epochs: \t\t{}'.format(FLAGS.epochs))
         print('-- iters: \t\t{}'.format(FLAGS.iters))
         print('-- print_freq: \t\t{}'.format(FLAGS.print_freq))
         print('-- load_model: \t\t{}'.format(FLAGS.load_model))
@@ -82,14 +79,24 @@ def main(_):
     init_logger(log_dir=log_dir, is_train=FLAGS.is_train)
 
     data = Dataset(name=FLAGS.dataset, log_dir=log_dir)
-    data.info(show_img=False, use_logging=True)
+    data.info(show_img=True, use_logging=True, log_dir=log_dir)
 
     if FLAGS.is_train:
-        train()
+        train(data)
 
 
-def train():
-    print('Hello train!')
+def train(data):
+    for iter_time in range(FLAGS.iters):
+        print('iter_time: {}'.format(iter_time))
+
+        # model = Model()
+        # solver = Solver(model)
+
+        x_batch, y_batch = data.random_batch(batch_size=FLAGS.batch_size)
+
+
+
+
 
 
 def test():
