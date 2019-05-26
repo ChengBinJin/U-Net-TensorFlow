@@ -11,7 +11,7 @@ import logging
 import numpy as np
 import tifffile as tiff
 
-from utils import imshow
+from utils import imshow, aug_translate, aug_flip, aug_rotate, aug_elastic_deform, aug_perturbation, test_augmentation
 
 logger = logging.getLogger(__name__)  # logger
 logger.setLevel(logging.INFO)
@@ -31,7 +31,8 @@ class Dataset(object):
 
         self.init_logger(log_dir)
 
-    def init_logger(self, log_dir):
+    @staticmethod
+    def init_logger(log_dir):
         formatter = logging.Formatter('%(asctime)s:%(name)s:%(message)s')
 
         # file handler
@@ -46,7 +47,7 @@ class Dataset(object):
         logger.addHandler(file_handler)
         logger.addHandler(stream_handler)
 
-    def info(self, show_img=False, use_logging=True, log_dir=None):
+    def info(self, use_logging=True, log_dir=None):
         if use_logging:
             logger.info('- Training-img set:\t{}'.format(self.train_imgs.shape))
             logger.info('- Training-label set:\t{}'.format(self.train_labels.shape))
@@ -59,30 +60,43 @@ class Dataset(object):
             print('- Test-img set:\t\t{}'.format(self.test_imgs.shape))
             print('- image shape:\t\t{}'.format(self.train_imgs[0].shape))
 
-        if show_img:
-            for idx in range(self.num_train):
-                img_, label_ = self.train_imgs[idx], self.train_labels[idx]
-                imshow(img_, label_, idx, log_dir=log_dir)
+        for idx in range(self.num_train):
+            img_, label_ = self.train_imgs[idx], self.train_labels[idx]
+            imshow(img_, label_, idx, log_dir=log_dir)
+            test_augmentation(img_, label_, idx, log_dir=log_dir)
 
-    def random_batch(self, batch_size=2):
-        idxs = np.random.randint(low=0, high=self.num_train, size=batch_size)
+    def random_batch(self, idx, batch_size=2):
+        # idxs = np.random.randint(low=0, high=self.num_train, size=batch_size)
+        idx = idx % self.num_train
+        x_img, y_label = self.train_imgs[idx], self.train_labels[idx]
 
-        print(idxs)
+        x_batchs, y_batchs = [], []
+        for _ in range(batch_size):
+            x_batch, y_batch = aug_translate(x_img, y_label)        # random translation
+            x_batch, y_batch = aug_flip(x_batch, y_batch)           # random horizontal and vertical flip
+            x_batch, y_batch = aug_rotate(x_batch, y_batch)         # random rotation
+            x_batch, y_batch = aug_elastic_deform(x_batch, y_batch) # random elastic deformation
+            x_batch, y_batch = aug_perturbation(x_batch, y_batch)   # random intensity perturbation
 
-        x_batch, y_batch = self.train_imgs[idxs], self.train_labels[idxs]
+            x_batchs.append(x_batch)
+            y_batchs.append(y_batch)
 
-        for i in range(batch_size):
-            img = x_batch[i]
+        x_batchs = np.asarray(x_batchs).astype(np.float32)
+        y_batchs = np.asarray(y_batchs).astype(np.float32)
 
-            img_pad = cv2.copyMakeBorder(img, 62, 62, 62, 62, cv2.BORDER_REFLECT_101)
 
-            cv2.imshow('Original', img)
-            cv2.imshow('Padding', img_pad)
+        # for i in range(batch_size):
+        #     img = x_batch[i]
+        #
+        #     img_pad = cv2.copyMakeBorder(img, 62, 62, 62, 62, cv2.BORDER_REFLECT_101)
+        #
+        #     cv2.imshow('Original', img)
+        #     cv2.imshow('Padding', img_pad)
+        #
+        #     if cv2.waitKey(0) & 0xFF == 27:
+        #         sys.exit('Esc clicked!')
 
-            if cv2.waitKey(0) & 0xFF == 27:
-                sys.exit('Esc clicked!')
-
-        return x_batch, y_batch
+        return x_batchs, y_batchs
 
 
 if __name__ == '__main__':
