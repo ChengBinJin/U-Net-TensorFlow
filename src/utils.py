@@ -95,6 +95,7 @@ def randomColors(idx):
 
     return color_dict[idx % len(color_dict)]
 
+
 def test_augmentation(img, label, idx, margin=10, log_dir=None):
     img_dir = os.path.join(log_dir, 'img')
     if not os.path.isdir(img_dir):
@@ -104,11 +105,11 @@ def test_augmentation(img, label, idx, margin=10, log_dir=None):
     img_flip, label_flip = aug_flip(img, label)             # random horizontal and vertical flip
     img_rota, label_rota = aug_rotate(img, label)             # random rotation
     img_defo, label_defo = aug_elastic_deform(img, label)   # random elastic deformation
-    img_pert, label_pert = aug_perturbation(img, label)     # random intensity perturbation
+    # img_pert, label_pert = aug_perturbation(img, label)     # random intensity perturbation
 
     # Arrange the images in a canvas and save them into the log file
-    imgs = [img, img_tran, img_flip, img_rota, img_defo, img_pert]
-    labels = [label, label_tran, label_flip, label_rota, label_defo, label_pert]
+    imgs = [img, img_tran, img_flip, img_rota, img_defo]
+    labels = [label, label_tran, label_flip, label_rota, label_defo]
     h, w = img.shape
     canvas = np.zeros((2 * h + 3 * margin, len(imgs) * w + (len(imgs) + 1) * margin), dtype=np.uint8)
 
@@ -118,7 +119,69 @@ def test_augmentation(img, label, idx, margin=10, log_dir=None):
 
     cv2.imwrite(os.path.join(img_dir, 'augmentation_' + str(idx).zfill(2) + '.png'), canvas)
 
-def aug_translate(img, label, max_factor=1.1):
+
+def test_cropping(img, label, idx, input_size, output_size, log_dir=None,
+                  white=(255, 255, 255), blue=(255, 0, 0), yellow=(39, 237, 250), thickness=2):
+    img_dir = os.path.join(log_dir, 'img')
+    if not os.path.isdir(img_dir):
+        os.makedirs(img_dir)
+
+    img_crop, label_crop, img_pad, rand_pos_h, rand_pos_w = cropping(
+        img, label, input_size, output_size, is_extend=True)
+    border_size = int((input_size - output_size) * 0.5)
+
+    # Convert gray images to BGR images
+    img_pad = np.dstack((img_pad, img_pad, img_pad))
+    label_show = np.dstack((label, label, label))
+
+    # Draw boundary lines
+    img_pad = cv2.line(img=img_pad,
+                       pt1=(0, border_size),
+                       pt2=(img_pad.shape[1]-1, border_size),
+                       color=white,
+                       thickness=thickness)
+    img_pad = cv2.line(img=img_pad,
+                       pt1=(0, img_pad.shape[0]-1-border_size),
+                       pt2=(img_pad.shape[1]-1, img_pad.shape[0]-1-border_size),
+                       color=white,
+                       thickness=thickness)
+    img_pad = cv2.line(img=img_pad,
+                       pt1=(border_size, 0),
+                       pt2=(border_size, img_pad.shape[0]-1),
+                       color=white,
+                       thickness=thickness)
+    img_pad = cv2.line(img=img_pad,
+                       pt1=(img_pad.shape[1]-1-border_size, 0),
+                       pt2=(img_pad.shape[1]-1-border_size, img_pad.shape[0]-1),
+                       color=white,
+                       thickness=thickness)
+
+    # Draw the ROI input region
+    img_pad = cv2.rectangle(img=img_pad,
+                            pt1=(rand_pos_w+border_size, rand_pos_h+border_size),
+                            pt2=(rand_pos_w+border_size+output_size, rand_pos_h+border_size+output_size),
+                            color=yellow,
+                            thickness=thickness+1)
+    img_pad = cv2.rectangle(img=img_pad,
+                            pt1=(rand_pos_w, rand_pos_h),
+                            pt2=(rand_pos_w+input_size, rand_pos_h+input_size),
+                            color=blue,
+                            thickness=thickness+1)
+    label_show = cv2.rectangle(img=label_show,
+                               pt1=(rand_pos_w, rand_pos_h),
+                               pt2=(rand_pos_w+output_size, rand_pos_h+output_size),
+                               color=yellow,
+                               thickness=thickness+1)
+
+    cv2.imshow('img_pad', img_pad)
+    cv2.imshow('img_crop', img_crop)
+    cv2.imshow('label', label_show)
+    cv2.imshow('label_crop', label_crop)
+
+    if cv2.waitKey(0) & 0xFF == 27:
+        sys.exit('Esc clicked')
+
+def aug_translate(img, label, max_factor=1.2):
     assert len(img.shape) == 2 and len(label.shape) == 2
 
     # Resize originl image
@@ -138,6 +201,7 @@ def aug_translate(img, label, max_factor=1.1):
     label_crop = label_bigger[h_star:h_star+img.shape[1], w_star:w_star+img.shape[0]]
 
     return img_crop, label_crop
+
 
 def aug_flip(img, label):
     assert len(img.shape) == 2 and len(label.shape) == 2
@@ -160,6 +224,7 @@ def aug_flip(img, label):
 
     return img_vflip, label_vflip
 
+
 def aug_rotate(img, label):
     assert len(img.shape) == 2 and len(label.shape) == 2
 
@@ -173,6 +238,7 @@ def aug_rotate(img, label):
     label_rotate[label_rotate < 127] = 0
 
     return img_rotate, label_rotate
+
 
 def aug_elastic_deform(img, label):
     assert len(img.shape) == 2 and len(label.shape) == 2
@@ -193,6 +259,22 @@ def aug_perturbation(img, label, low=0.8, high=1.2):
     img_en = np.round(img * pertur_map).astype(np.uint8)
     img_en = np.clip(img_en, a_min=0, a_max=255)
     return img_en, label
+
+
+def cropping(img, label, input_size, output_size, is_extend=False):
+    border_size = int((input_size - output_size) * 0.5)
+    rand_pos_h = np.random.randint(low=0, high=img.shape[0] - output_size)
+    rand_pos_w = np.random.randint(low=0, high=img.shape[1] - output_size)
+
+    img_pad = cv2.copyMakeBorder(img, border_size, border_size, border_size, border_size, cv2.BORDER_REFLECT_101)
+    img_crop = img_pad[rand_pos_h:rand_pos_h+input_size, rand_pos_w:rand_pos_w+input_size].copy()
+    label_crop = label[rand_pos_h:rand_pos_h+output_size, rand_pos_w:rand_pos_w+output_size].copy()
+
+    if is_extend:
+        return img_crop, label_crop, img_pad, rand_pos_h, rand_pos_w
+    else:
+        return img_crop, label_crop
+
 
 def pre_bilaterFilter(img, d=3, sigmaColor=75, simgaSpace=75):
     pre_img = cv2.bilateralFilter(src=img, d=d, sigmaColor=sigmaColor, sigmaSpace=simgaSpace)

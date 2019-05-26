@@ -5,13 +5,13 @@
 # Email: sbkim0407@gmail.com
 # ---------------------------------------------------------
 import os
-import sys
-import cv2
+# import sys
+# import cv2
 import logging
 import numpy as np
 import tifffile as tiff
 
-from utils import imshow, aug_translate, aug_flip, aug_rotate, aug_elastic_deform, aug_perturbation, test_augmentation
+import utils as utils
 
 logger = logging.getLogger(__name__)  # logger
 logger.setLevel(logging.INFO)
@@ -19,6 +19,11 @@ logger.setLevel(logging.INFO)
 
 class Dataset(object):
     def __init__(self, name='EMSegmentation', log_dir=None):
+        # It is depended on dataset
+        self.input_size = 572
+        self.output_size = 388
+        self.input_channel = self.output_channel = 1
+
         self.name = name
         self.dataset_path = '../../Data/EMSegmentation'
 
@@ -28,6 +33,7 @@ class Dataset(object):
 
         self.num_train = self.train_imgs.shape[0]
         self.num_test = self.test_imgs.shape[0]
+        self.img_shape = self.train_imgs[0].shape
 
         self.init_logger(log_dir)
 
@@ -53,48 +59,39 @@ class Dataset(object):
             logger.info('- Training-label set:\t{}'.format(self.train_labels.shape))
             logger.info('- Test-img set:\t\t{}'.format(self.test_imgs.shape))
 
-            logger.info('- image shape:\t\t{}'.format(self.train_imgs[0].shape))
+            logger.info('- image shape:\t\t{}'.format(self.img_shape))
         else:
             print('- Training-img set:\t{}'.format(self.train_imgs.shape))
             print('- Training-label set:\t{}'.format(self.train_labels.shape))
             print('- Test-img set:\t\t{}'.format(self.test_imgs.shape))
-            print('- image shape:\t\t{}'.format(self.train_imgs[0].shape))
+            print('- image shape:\t\t{}'.format(self.img_shape))
 
         for idx in range(self.num_train):
             img_, label_ = self.train_imgs[idx], self.train_labels[idx]
-            imshow(img_, label_, idx, log_dir=log_dir)
-            test_augmentation(img_, label_, idx, log_dir=log_dir)
+            utils.imshow(img_, label_, idx, log_dir=log_dir)
+            utils.test_augmentation(img_, label_, idx, log_dir=log_dir)
+            utils.test_cropping(img_, label_, idx, self.input_size, self.output_size, log_dir=log_dir)
 
     def random_batch(self, idx, batch_size=2):
-        # idxs = np.random.randint(low=0, high=self.num_train, size=batch_size)
         idx = idx % self.num_train
         x_img, y_label = self.train_imgs[idx], self.train_labels[idx]
 
-        x_batchs, y_batchs = [], []
-        for _ in range(batch_size):
-            x_batch, y_batch = aug_translate(x_img, y_label)        # random translation
-            x_batch, y_batch = aug_flip(x_batch, y_batch)           # random horizontal and vertical flip
-            x_batch, y_batch = aug_rotate(x_batch, y_batch)         # random rotation
-            x_batch, y_batch = aug_elastic_deform(x_batch, y_batch) # random elastic deformation
-            x_batch, y_batch = aug_perturbation(x_batch, y_batch)   # random intensity perturbation
+        x_batchs = np.zeros((batch_size, self.input_size, self.input_size, self.input_channel), dtype=np.float32)
+        y_batchs = np.zeros((batch_size, self.output_size, self.output_size, self.output_channel), dtype=np.float32)
+        for idx in range(batch_size):
+            x_batch, y_batch = utils.aug_translate(x_img, y_label)        # random translation
+            x_batch, y_batch = utils.aug_flip(x_batch, y_batch)           # random horizontal and vertical flip
+            x_batch, y_batch = utils.aug_rotate(x_batch, y_batch)         # random rotation
+            x_batch, y_batch = utils.aug_elastic_deform(x_batch, y_batch) # random elastic deformation
 
-            x_batchs.append(x_batch)
-            y_batchs.append(y_batch)
+            # Following the originl U-Net paper
+            # Resize image to 696(696=572+92*2) x 696(696=572+92*2) then crop 572 x 572 input image
+            # and 388 x 388 lable map
+            # 92 = (572 - 388) / 2
+            x_batch, y_batch = utils.cropping(x_batch, y_batch, self.input_size, self.output_size)
 
-        x_batchs = np.asarray(x_batchs).astype(np.float32)
-        y_batchs = np.asarray(y_batchs).astype(np.float32)
-
-
-        # for i in range(batch_size):
-        #     img = x_batch[i]
-        #
-        #     img_pad = cv2.copyMakeBorder(img, 62, 62, 62, 62, cv2.BORDER_REFLECT_101)
-        #
-        #     cv2.imshow('Original', img)
-        #     cv2.imshow('Padding', img_pad)
-        #
-        #     if cv2.waitKey(0) & 0xFF == 27:
-        #         sys.exit('Esc clicked!')
+            x_batchs[idx, :, :, 0] = x_batch
+            y_batchs[idx, :, :, 0] = y_batch
 
         return x_batchs, y_batchs
 
@@ -104,5 +101,5 @@ if __name__ == '__main__':
 
     for i in range(data.num_train):
         img, label = data.train_imgs[i], data.train_labels[i]
-        imshow(img, label)
+        utils.imshow(img, label)
 
