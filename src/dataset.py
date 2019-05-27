@@ -23,6 +23,8 @@ class Dataset(object):
         self.input_size = 572
         self.output_size = 388
         self.input_channel = self.output_channel = 1
+        self.input_shape = (self.input_size, self.input_size, self.input_channel)
+        self.output_shape = (self.output_size, self.output_size, self.output_channel)
 
         self.name = name
         self.dataset_path = '../../Data/EMSegmentation'
@@ -107,5 +109,5 @@ if __name__ == '__main__':
 
     for i in range(data.num_train):
         img, label = data.train_imgs[i], data.train_labels[i]
-        utils.imshow(img, label)
+        utils.imshow(img, label, idx=i)
 

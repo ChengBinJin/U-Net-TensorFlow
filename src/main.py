@@ -10,6 +10,7 @@ import tensorflow as tf
 from datetime import datetime
 
 from dataset import Dataset
+from model import Model
 from utils import make_folders
 
 FLAGS = tf.flags.FLAGS
@@ -74,12 +75,19 @@ def main(_):
     else:
         cur_time = FLAGS.load_model
 
-    model_dir, log_dir = make_folders(is_train=FLAGS.is_train,
-                                      cur_time=cur_time)
+    model_dir, log_dir = make_folders(is_train=FLAGS.is_train, cur_time=cur_time)
     init_logger(log_dir=log_dir, is_train=FLAGS.is_train)
 
     data = Dataset(name=FLAGS.dataset, log_dir=log_dir)
     data.info(use_logging=True, log_dir=log_dir)
+
+    model = Model(input_shape=data.input_shape,
+                  output_shape=data.output_shape,
+                  lr=FLAGS.learning_rate,
+                  is_train=FLAGS.is_train,
+                  log_dir=log_dir,
+                  name='U-Net')
+    # solver = Solver()
 
     if FLAGS.is_train:
         train(data)
@@ -88,9 +96,6 @@ def main(_):
 def train(data):
     for iter_time in range(FLAGS.iters):
         print('iter_time: {}'.format(iter_time))
-
-        # model = Model()
-        # solver = Solver(model)
 
         x_batch, y_batch = data.random_batch(batch_size=FLAGS.batch_size, idx=iter_time)
 
