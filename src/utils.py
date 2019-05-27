@@ -121,7 +121,7 @@ def test_augmentation(img, label, idx, margin=10, log_dir=None):
 
 
 def test_cropping(img, label, idx, input_size, output_size, log_dir=None,
-                  white=(255, 255, 255), blue=(255, 0, 0), yellow=(39, 237, 250), thickness=2):
+                  white=(255, 255, 255), blue=(255, 141, 47), red=(91, 70, 246), thickness=2, margin=10):
     img_dir = os.path.join(log_dir, 'img')
     if not os.path.isdir(img_dir):
         os.makedirs(img_dir)
@@ -160,7 +160,7 @@ def test_cropping(img, label, idx, input_size, output_size, log_dir=None,
     img_pad = cv2.rectangle(img=img_pad,
                             pt1=(rand_pos_w+border_size, rand_pos_h+border_size),
                             pt2=(rand_pos_w+border_size+output_size, rand_pos_h+border_size+output_size),
-                            color=yellow,
+                            color=red,
                             thickness=thickness+1)
     img_pad = cv2.rectangle(img=img_pad,
                             pt1=(rand_pos_w, rand_pos_h),
@@ -170,16 +170,90 @@ def test_cropping(img, label, idx, input_size, output_size, log_dir=None,
     label_show = cv2.rectangle(img=label_show,
                                pt1=(rand_pos_w, rand_pos_h),
                                pt2=(rand_pos_w+output_size, rand_pos_h+output_size),
-                               color=yellow,
+                               color=red,
                                thickness=thickness+1)
 
-    cv2.imshow('img_pad', img_pad)
-    cv2.imshow('img_crop', img_crop)
-    cv2.imshow('label', label_show)
-    cv2.imshow('label_crop', label_crop)
+    img_crop = cv2.rectangle(img=np.dstack((img_crop, img_crop, img_crop)),
+                             pt1=(2, 2),
+                             pt2=(img_crop.shape[1]-2, img_crop.shape[0]-2),
+                             color=blue,
+                             thickness=thickness+1)
+    label_crop = cv2.rectangle(img=np.dstack((label_crop, label_crop, label_crop)),
+                               pt1=(2, 2),
+                               pt2=(label_crop.shape[1]-2, label_crop.shape[0]-2),
+                               color=red,
+                               thickness=thickness+1)
 
-    if cv2.waitKey(0) & 0xFF == 27:
-        sys.exit('Esc clicked')
+    canvas = np.zeros((img_pad.shape[0] + label_show.shape[0] + 3 * margin,
+                       img_pad.shape[1] + img_crop.shape[1] + 3 * margin, 3), dtype=np.uint8)
+
+    # Copy img_pad
+    h_start = margin
+    w_start = margin
+    canvas[h_start:h_start + img_pad.shape[0], w_start:w_start+img_pad.shape[1], :] = img_pad
+
+    # Copy label_show
+    h_start = 2 * margin + img_pad.shape[0]
+    w_start = margin
+    canvas[h_start:h_start + label_show.shape[0], w_start:w_start + label_show.shape[0], :] = label_show
+
+    # Draw connections between the left and right images
+    # Four connections for the upper images
+    canvas = cv2.line(img=canvas,
+                      pt1=(margin+rand_pos_w, margin+rand_pos_h),
+                      pt2=(2*margin+img_pad.shape[1], margin),
+                      color=blue,
+                      thickness=thickness+1)
+    canvas = cv2.line(img=canvas,
+                      pt1=(margin+rand_pos_w+input_size, margin+rand_pos_h),
+                      pt2=(2*margin+img_pad.shape[1]+img_crop.shape[1], margin),
+                      color=blue,
+                      thickness=thickness+1)
+    canvas = cv2.line(img=canvas,
+                      pt1=(margin+rand_pos_w, margin+rand_pos_h+input_size),
+                      pt2=(2*margin+img_pad.shape[1], margin+input_size),
+                      color=blue,
+                      thickness=thickness+1)
+    canvas = cv2.line(img=canvas,
+                      pt1=(margin+rand_pos_w+input_size, margin+rand_pos_h+input_size),
+                      pt2=(2*margin+img_pad.shape[1]+img_crop.shape[1], margin+input_size),
+                      color=blue,
+                      thickness=thickness+1)
+
+    # Four connections for the bottom images
+    canvas = cv2.line(img=canvas,
+                      pt1=(margin+rand_pos_w, 2*margin+img_pad.shape[1]+rand_pos_h),
+                      pt2=(2*margin+img_pad.shape[0], 2*margin+img_pad.shape[1]),
+                      color=red,
+                      thickness=thickness+1)
+    canvas = cv2.line(img=canvas,
+                      pt1=(margin+output_size+rand_pos_w, 2*margin+img_pad.shape[0]+rand_pos_h),
+                      pt2=(2*margin+img_pad.shape[1]+output_size, 2*margin+img_pad.shape[0]),
+                      color=red,
+                      thickness=thickness+1)
+    canvas = cv2.line(img=canvas,
+                      pt1=(margin+rand_pos_w, 2*margin+img_pad.shape[0]+output_size+rand_pos_h),
+                      pt2=(2*margin+img_pad.shape[1], 2*margin+img_pad.shape[0]+output_size),
+                      color=red,
+                      thickness=thickness+1)
+    canvas = cv2.line(img=canvas,
+                      pt1=(margin+rand_pos_w+output_size, 2*margin+img_pad.shape[1]+output_size+rand_pos_h),
+                      pt2=(2*margin+img_pad.shape[1]+output_size, 2*margin+img_pad.shape[1]+output_size),
+                      color=red,
+                      thickness=thickness+1)
+
+    # Copy img_crop
+    h_start = margin
+    w_start = 2 * margin + img_pad.shape[1]
+    canvas[h_start:h_start + img_crop.shape[0], w_start:w_start + img_crop.shape[1], :] = img_crop
+
+    # Copy label_crop
+    h_start = 2 * margin + img_pad.shape[0]
+    w_start = 2 * margin + img_pad.shape[1]
+    canvas[h_start:h_start + label_crop.shape[0], w_start:w_start + label_crop.shape[1], :] = label_crop
+
+    cv2.imwrite(os.path.join(img_dir, 'crop_' + str(idx).zfill(2) + '.png'), canvas)
+
 
 def aug_translate(img, label, max_factor=1.2):
     assert len(img.shape) == 2 and len(label.shape) == 2

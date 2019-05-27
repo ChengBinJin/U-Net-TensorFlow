@@ -30,6 +30,7 @@ class Dataset(object):
         self.train_imgs = tiff.imread(os.path.join(self.dataset_path, 'train-volume.tif'))
         self.train_labels = tiff.imread(os.path.join(self.dataset_path, 'train-labels.tif'))
         self.test_imgs = tiff.imread(os.path.join(self.dataset_path, 'test-volume.tif'))
+        self.mean_value = np.mean(self.train_imgs)
 
         self.num_train = self.train_imgs.shape[0]
         self.num_test = self.test_imgs.shape[0]
@@ -66,11 +67,14 @@ class Dataset(object):
             print('- Test-img set:\t\t{}'.format(self.test_imgs.shape))
             print('- image shape:\t\t{}'.format(self.img_shape))
 
+        print('[*] Saving data augmented images to check U-Net fundamentals...')
         for idx in range(self.num_train):
             img_, label_ = self.train_imgs[idx], self.train_labels[idx]
             utils.imshow(img_, label_, idx, log_dir=log_dir)
             utils.test_augmentation(img_, label_, idx, log_dir=log_dir)
             utils.test_cropping(img_, label_, idx, self.input_size, self.output_size, log_dir=log_dir)
+        print('[!] Saving data augmented images to check U-Net fundamentals!')
+
 
     def random_batch(self, idx, batch_size=2):
         idx = idx % self.num_train
@@ -93,8 +97,10 @@ class Dataset(object):
             x_batchs[idx, :, :, 0] = x_batch
             y_batchs[idx, :, :, 0] = y_batch
 
-        return x_batchs, y_batchs
+        return self.zero_centering(x_batchs), y_batchs
 
+    def zero_centering(self, imgs):
+        return imgs - self.mean_value
 
 if __name__ == '__main__':
     data = Dataset()

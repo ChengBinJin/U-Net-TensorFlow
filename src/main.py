@@ -94,6 +94,8 @@ def train(data):
 
         x_batch, y_batch = data.random_batch(batch_size=FLAGS.batch_size, idx=iter_time)
 
+        print("Here!")
+
 
 
 
