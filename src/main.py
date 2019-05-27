@@ -84,6 +84,8 @@ def main(_):
     model = Model(input_shape=data.input_shape,
                   output_shape=data.output_shape,
                   lr=FLAGS.learning_rate,
+                  weight_decay=FLAGS.weight_decay,
+                  total_iters=FLAGS.iters,
                   is_train=FLAGS.is_train,
                   log_dir=log_dir,
                   name='U-Net')

@@ -22,7 +22,7 @@ class Dataset(object):
         # It is depended on dataset
         self.input_size = 572
         self.output_size = 388
-        self.input_channel = self.output_channel = 1
+        self.input_channel, self.output_channel = 1, 2
         self.input_shape = (self.input_size, self.input_size, self.input_channel)
         self.output_shape = (self.output_size, self.output_size, self.output_channel)
 

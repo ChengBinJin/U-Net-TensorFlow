@@ -9,12 +9,17 @@ import utils as utils
 import tensorflow_utils as tf_utils
 
 class Model(object):
-    def __init__(self, input_shape, output_shape, lr=0.001, is_train=True, log_dir=None, name='U-Net'):
+    def __init__(self, input_shape, output_shape, lr=0.001, weight_decay=1e-4, total_iters=2e4, is_train=True,
+                 log_dir=None, name='U-Net'):
         self.input_shape = input_shape
         self.output_shape = output_shape
         self.conv_dims = [64, 64, 128, 128, 256, 256, 512, 512, 1024, 1024,
                           512, 512, 512, 256, 256, 256, 128, 128, 128, 64, 64, 64, 2]
         self.lr = lr
+        self.weight_decay = weight_decay
+        self.total_steps = total_iters
+        self.start_decay_step = int(self.total_steps * 0.5)
+        self.decay_steps = self.total_steps - self.start_decay_step
         self.is_train = is_train
         self.log_dir = log_dir
         self.name = name
@@ -61,7 +66,6 @@ class Model(object):
                                    padding='VALID', initializer='He', name='s4_conv2', logger=self.logger)
         s4_conv2_drop = tf_utils.dropout(x=s4_conv2, keep_prob=self.keep_prob, name='s4_conv2_dropout',
                                          logger=self.logger)
-
 
         # Stage 5
         s5_maxpool = tf_utils.max_pool(x=s4_conv2, name='s5_maxpool', logger=self.logger)
@@ -150,3 +154,29 @@ class Model(object):
         self.output = tf_utils.conv2d(x=s9_conv3, output_dim=self.conv_dims[22], k_h=1, k_w=1, d_h=1, d_w=1,
                                       padding='SAME', initializer='He', name='output', logger=self.logger)
 
+        # Loss = data loss + regularization term
+        self.data_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.output, labels=self.out_img))
+        self.reg_term = self.weight_decay * tf.reduce_sum(
+            [tf.nn.l2_loss(weight) for weight in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)])
+        self.total_loss = self.data_loss + self.reg_term
+
+        self.train_op = self.optimizer_fn(loss=self.total_loss, name='Adam')
+
+    def optimizer_fn(self,loss, name=None):
+        with tf.variable_scope(name):
+            global_step = tf.Variable(0, dtype=tf.float32, trainable=False)
+            start_learning_rate = self.lr
+            end_learning_rate = 0.
+            start_decay_stp = self.start_decay_step
+            decay_steps = self.decay_steps
+
+            learning_rate = (tf.where(tf.greater_equal(global_step, start_decay_stp),
+                                      tf.train.polynomial_decay(start_learning_rate,
+                                                                global_step - start_decay_stp,
+                                                                decay_steps, end_learning_rate, power=1.0),
+                                      start_learning_rate))
+            tf.summary.scalar('learning_rate', learning_rate)
+
+            learn_step = tf.train.AdamOptimizer(learning_rate, beta1=0.99).minimize(loss, global_step=global_step)
+
+        return learn_step
