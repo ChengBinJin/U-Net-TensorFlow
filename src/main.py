@@ -6,22 +6,25 @@
 # ---------------------------------------------------------
 import os
 import logging
+import numpy as np
 import tensorflow as tf
 from datetime import datetime
 
 from dataset import Dataset
 from model import Model
+from solver import Solver
 from utils import make_folders
 
 FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string('gpu_index', '0', 'gpu index if you have multiple gpus, default: 0')
 tf.flags.DEFINE_string('dataset', 'EMSegmentation', 'dataset name, default: EMSegmentation')
-tf.flags.DEFINE_integer('batch_size', 8, 'batch size for one iteration, default: 8')
+tf.flags.DEFINE_integer('batch_size', 4, 'batch size for one iteration, default: 4')
 tf.flags.DEFINE_bool('is_train', True, 'training or inference mode, default: True')
 tf.flags.DEFINE_float('learning_rate', 1e-3, 'initial learning rate for optimizer, default: 0.001')
-tf.flags.DEFINE_float('weight_decay', 1e-4, 'weight decay for model to handle overfitting, default: 0.0001')
-tf.flags.DEFINE_integer('iters', 5, 'number of iterations for one epoch, default: 20,000')
-tf.flags.DEFINE_integer('print_freq', 50, 'print frequency for loss information, default: 50')
+tf.flags.DEFINE_float('weight_decay', 1e-5, 'weight decay for model to handle overfitting, default: 0.00001')
+tf.flags.DEFINE_integer('iters', 200, 'number of iterations for one epoch, default: 20,000')
+tf.flags.DEFINE_integer('print_freq', 10, 'print frequency for loss information, default: 10')
+tf.flags.DEFINE_integer('eval_freq', 20, 'evaluation frequency for batch accuracy, default: 200')
 tf.flags.DEFINE_string('load_model', None, 'folder of saved model that you wish to continue training '
                                            '(e.g. 20190524-1606), default: None')
 
@@ -53,6 +56,7 @@ def init_logger(log_dir, is_train=True):
         logger.info('weight_decay: \t\t{}'.format(FLAGS.weight_decay))
         logger.info('iters: \t\t{}'.format(FLAGS.iters))
         logger.info('print_freq: \t\t{}'.format(FLAGS.print_freq))
+        logger.info('eval_freq: \t\t{}'.format(FLAGS.eval_freq))
         logger.info('load_model: \t\t{}'.format(FLAGS.load_model))
     else:
         print('-- gpu_index: \t\t{}'.format(FLAGS.gpu_index))
@@ -63,6 +67,7 @@ def init_logger(log_dir, is_train=True):
         print('-- weight_decay: \t\t{}'.format(FLAGS.weight_decay))
         print('-- iters: \t\t{}'.format(FLAGS.iters))
         print('-- print_freq: \t\t{}'.format(FLAGS.print_freq))
+        print('-- eval_freq: \t\t{}'.format(FLAGS.eval_freq))
         print('-- load_model: \t\t{}'.format(FLAGS.load_model))
 
 
@@ -81,6 +86,7 @@ def main(_):
     data = Dataset(name=FLAGS.dataset, log_dir=log_dir)
     data.info(use_logging=True, log_dir=log_dir)
 
+    sess = tf.Session()  # Initialize session
     model = Model(input_shape=data.input_shape,
                   output_shape=data.output_shape,
                   lr=FLAGS.learning_rate,
@@ -89,23 +95,29 @@ def main(_):
                   is_train=FLAGS.is_train,
                   log_dir=log_dir,
                   name='U-Net')
-    # solver = Solver()
+    solver = Solver(sess, model)
+    solver.init()
 
     if FLAGS.is_train:
-        train(data)
+        train(data, solver)
 
 
-def train(data):
+def train(data, solver):
     for iter_time in range(FLAGS.iters):
-        print('iter_time: {}'.format(iter_time))
-
         x_batch, y_batch = data.random_batch(batch_size=FLAGS.batch_size, idx=iter_time)
+        _, total_loss, data_loss, reg_term, summary = solver.train(x_batch, y_batch)
 
-        print("Here!")
+        if np.mod(iter_time, FLAGS.print_freq) == 0:
+            msg = '{}/{}: \tTotal loss: {:.2f}, \tData loss: {:.2f}, \tReg. term: {:.2f}'
+            print(msg.format(iter_time, FLAGS.iters, total_loss, data_loss, reg_term))
 
+        if np.mod(iter_time, FLAGS.eval_freq) == 0:
+            x_batch, y_batch = data.random_batch(batch_size=FLAGS.batch_size,
+                                                 idx=np.random.randint(low=0, high=FLAGS.iters))
+            acc, total_loss, data_loss, reg_term = solver.test(x_batch, y_batch)
 
-
-
+            msg = 'Accuracy: {:.2f}%, \tTotal loss: {:.2f}, \tData loss: {:.2f}, \tReg. term: {:.2f}'
+            print(msg.format(acc, total_loss, data_loss, reg_term))
 
 
 def test():

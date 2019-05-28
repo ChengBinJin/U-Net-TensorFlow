@@ -22,9 +22,9 @@ class Dataset(object):
         # It is depended on dataset
         self.input_size = 572
         self.output_size = 388
-        self.input_channel, self.output_channel = 1, 2
+        self.input_channel = 1
         self.input_shape = (self.input_size, self.input_size, self.input_channel)
-        self.output_shape = (self.output_size, self.output_size, self.output_channel)
+        self.output_shape = (self.output_size, self.output_size)
 
         self.name = name
         self.dataset_path = '../../Data/EMSegmentation'
@@ -82,8 +82,9 @@ class Dataset(object):
         idx = idx % self.num_train
         x_img, y_label = self.train_imgs[idx], self.train_labels[idx]
 
-        x_batchs = np.zeros((batch_size, self.input_size, self.input_size, self.input_channel), dtype=np.float32)
-        y_batchs = np.zeros((batch_size, self.output_size, self.output_size, self.output_channel), dtype=np.float32)
+        x_batchs = np.zeros((batch_size, self.input_size, self.input_size), dtype=np.float32)
+        # y_batchs will be represented in one-hot in solver.train()
+        y_batchs = np.zeros((batch_size, self.output_size, self.output_size), dtype=np.float32)
         for idx in range(batch_size):
             x_batch, y_batch = utils.aug_translate(x_img, y_label)        # random translation
             x_batch, y_batch = utils.aug_flip(x_batch, y_batch)           # random horizontal and vertical flip
@@ -96,13 +97,14 @@ class Dataset(object):
             # 92 = (572 - 388) / 2
             x_batch, y_batch = utils.cropping(x_batch, y_batch, self.input_size, self.output_size)
 
-            x_batchs[idx, :, :, 0] = x_batch
-            y_batchs[idx, :, :, 0] = y_batch
+            x_batchs[idx, :, :] = x_batch
+            y_batchs[idx, :, :] = y_batch
 
-        return self.zero_centering(x_batchs), y_batchs
+        return self.zero_centering(x_batchs), (y_batchs / 255).astype(np.uint8)
 
     def zero_centering(self, imgs):
         return imgs - self.mean_value
+
 
 if __name__ == '__main__':
     data = Dataset()

@@ -10,7 +10,7 @@ import cv2
 import logging
 import elasticdeform
 import numpy as np
-
+from sklearn.metrics import confusion_matrix
 from scipy.ndimage import rotate
 
 
@@ -36,6 +36,13 @@ def init_logger(log_dir, name, is_train):
         logger.addHandler(stream_handler)
 
     return logger, file_handler, stream_handler
+
+
+def release_handles(logger, file_handler, stream_handler):
+    file_handler.close()
+    stream_handler.close()
+    logger.removeHandler(file_handler)
+    logger.removeHandler(stream_handler)
 
 
 def make_folders(is_train, cur_time=None):
@@ -379,8 +386,7 @@ def pre_bilaterFilter(img, d=3, sigmaColor=75, simgaSpace=75):
     pre_img = cv2.bilateralFilter(src=img, d=d, sigmaColor=sigmaColor, sigmaSpace=simgaSpace)
     return pre_img
 
-# def uint82float32():
-
-# zero centering
-
-# add last channel
+def acc_measure(true_arr, pred_arr):
+    cm = confusion_matrix(true_arr, pred_arr)
+    acc = 1. * (cm[0, 0] + cm[1, 1]) / np.sum(cm)
+    return acc
