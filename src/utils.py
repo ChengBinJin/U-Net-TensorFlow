@@ -49,17 +49,22 @@ def make_folders(is_train, cur_time=None):
     if is_train:
         model_dir = os.path.join('model', '{}'.format(cur_time))
         log_dir = os.path.join('logs', '{}'.format(cur_time))
+        sample_dir = os.path.join('sample', '{}'.format(cur_time))
 
         if not os.path.isdir(model_dir):
             os.makedirs(model_dir)
 
         if not os.path.isdir(log_dir):
             os.makedirs(log_dir)
+
+        if not os.path.isdir(sample_dir):
+            os.makedirs(sample_dir)
     else:
         model_dir = os.path.join('model', '{}'.format(cur_time))
         log_dir = os.path.join('logs', '{}'.format(cur_time))
+        sample_dir = os.path.join('sample', '{}'.format(cur_time))
 
-    return model_dir, log_dir
+    return model_dir, log_dir, sample_dir
 
 
 def imshow(img, label, idx, alpha=0.6, delay=1, log_dir=None, show=False):

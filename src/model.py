@@ -38,6 +38,7 @@ class Model(object):
         self.inp_img = tf.placeholder(dtype=tf.float32, shape=[None, *self.input_shape], name='input_img')
         self.out_img = tf.placeholder(dtype=tf.uint8, shape=[None, *self.output_shape], name='output_img')
         self.keep_prob = tf.placeholder(dtype=tf.float32, name='keep_prob')
+        self.val_acc = tf.placeholder(dtype=tf.float32, name='val_acc')
 
         # One-hot representation
         self.out_img_one_hot = tf.one_hot(indices=self.out_img, depth=2, axis=-1, dtype=tf.float32, name='one_hot')
@@ -220,10 +221,12 @@ class Model(object):
         return learn_step
 
     def _tensorboard(self):
-        self.tb_total = tf.summary.scalar('loss/total', self.total_loss)
-        self.tb_data = tf.summary.scalar('loss/data', self.data_loss)
-        self.tb_reg = tf.summary.scalar('loss/reg_term', self.reg_term)
+        self.tb_total = tf.summary.scalar('Loss/total', self.total_loss)
+        self.tb_data = tf.summary.scalar('Loss/data', self.data_loss)
+        self.tb_reg = tf.summary.scalar('Loss/reg_term', self.reg_term)
         self.summary_op = tf.summary.merge(inputs=[self.tb_lr, self.tb_total, self.tb_data, self.tb_reg])
+
+        self.val_acc_op = tf.summary.scalar('Acc', self.val_acc)
 
     def release_handles(self):
         utils.release_handles(self.logger, self.file_handler, self.stream_handler)
