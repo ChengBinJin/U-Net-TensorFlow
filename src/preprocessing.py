@@ -12,13 +12,16 @@ def main(dataset_path=None):
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
+    wmaps = np.zeros_like(train_labels, dtype=np.float32)
     for idx in range(train_labels.shape[0]):
         print('Image index: {}'.format(idx))
         img = train_labels[idx]
-        cal_weight_map(img, dataset_path, save_dir=save_dir, iter_time=idx)
+        cal_weight_map(label=img, wmaps=wmaps, save_dir=save_dir, iter_time=idx)
+
+    np.save(os.path.join(dataset_path, 'train-wmaps.npy', wmaps))
 
 
-def cal_weight_map(label, data_dir, save_dir, iter_time, wc=1., w0=10., sigma=5, interval=500, vmin=0, vmax=12):
+def cal_weight_map(label, wmaps, save_dir, iter_time, wc=1., w0=10., sigma=5, interval=500, vmin=0, vmax=12):
     _, contours, _ = cv2.findContours(label, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     wmap = wc * np.ones_like(label, dtype=np.float32)
     img = label.copy()
@@ -45,7 +48,8 @@ def cal_weight_map(label, data_dir, save_dir, iter_time, wc=1., w0=10., sigma=5,
         plt.colorbar()
 
     plt.savefig(os.path.join(save_dir, str(iter_time).zfill(2) + '.png'), bbox_inches='tight')
-    np.save(os.path.join(data_dir, 'train-wmap' + str(iter_time).zfill(2) + '.npy'), wmap)
+    wmaps[iter_time] = wmap
+
 
 if __name__ == '__main__':
     main(dataset_path='../../Data/EMSegmentation')
