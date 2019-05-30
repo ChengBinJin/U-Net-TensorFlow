@@ -3,3 +3,4 @@ src/.idea
 src/__pycache__
 src/logs
 src/model
+src/wmap_imgs

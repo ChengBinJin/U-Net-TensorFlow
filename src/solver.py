@@ -58,27 +58,20 @@ class Solver(object):
         else:
             return avg_acc
 
-    def save_imgs(self, x_imgs, pred_imgs, y_imgs, iter_time, sample_dir=None, margin=5):
+    def save_imgs(self, x_imgs, pred_imgs, y_imgs, iter_time, sample_dir=None, border=5):
         num_cols = 3
         _, H1, W1 = x_imgs.shape
         N, H2, W2 = pred_imgs.shape
         margin = int(0.5 * (H1 - H2))
 
-        canvas = np.zeros((N * H1, 1 * W1 + (num_cols - 1) * W2), dtype=np.uint8)
-        x_imgs += self.mean_value
-        y_imgs *= 255
-        pred_imgs *= 255
-
-        print('y_imgs.shape: {}'.format(y_imgs.shape))
-
-        print('N: {}'.format(N))
-        print('H1: {}, W1: {}'.format(H1, W1))
-        print('H2: {}, W2: {}'.format(H2, W2))
-
+        canvas = np.zeros((N*H1+(N+1)*border, 1*W1+(num_cols-1)*W2+(num_cols+1)*border), dtype=np.uint8)
         for idx in range(N):
-            canvas[idx*H1:(idx+1)*H1, 0:W1] = x_imgs[idx]
-            canvas[idx*H1+margin:idx*H1+margin+H2, W1:W1+W2] = pred_imgs[idx]
-            canvas[idx*H1+margin:idx*H1+margin+H2, W1+W2:] = y_imgs[idx]
+            canvas[(idx+1)*border+idx*H1:(idx+1)*border+(idx+1)*H1, border:border+W1] = \
+                x_imgs[idx] + self.mean_value
+            canvas[(idx+1)*border+idx*H1+margin:(idx+1)*border+idx*H1+margin+H2, 2*border+W1:2*border+W1+W2] = \
+                pred_imgs[idx] * 255
+            canvas[(idx+1)*border+idx*H1+margin:(idx+1)*border+idx*H1+margin+H2, 3*border+W1+W2:3*border+W1+2*W2] = \
+                y_imgs[idx] * 255
 
         cv2.imwrite(os.path.join(sample_dir, str(iter_time).zfill(5) + '.png'), canvas)
 
