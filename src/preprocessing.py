@@ -44,6 +44,7 @@ def cal_weight_map(label, wmaps, save_dir, iter_time, wc=1., w0=10., sigma=5, in
     plt.imshow(wmap, cmap=plt.cm.jet, vmin=vmin, vmax=vmax)
     plt.axis('off')
 
+    # To solve the multiple color-bar problem
     if iter_time == 0:
         plt.colorbar()
 
