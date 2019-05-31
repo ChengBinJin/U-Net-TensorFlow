@@ -74,7 +74,9 @@ class Dataset(object):
 
         print('[*] Saving data augmented images to check U-Net fundamentals...')
         for idx in range(self.num_train):
-            img_, label_, wmap_ = self.train_imgs[idx], self.train_labels[idx], self.train_wmaps[idx]
+            img_ = self.train_imgs[idx].copy()
+            label_ = self.train_labels[idx].copy()
+            wmap_= self.train_wmaps[idx].copy()
             utils.imshow(img_, label_, wmap_, idx, log_dir=log_dir)
             # utils.test_augmentation(img_, label_, idx, log_dir=log_dir)
             # utils.test_cropping(img_, label_, idx, self.input_size, self.output_size, log_dir=log_dir)

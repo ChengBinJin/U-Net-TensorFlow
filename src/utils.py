@@ -86,6 +86,7 @@ def imshow(img, label, wmap, idx, alpha=0.6, delay=1, log_dir=None, show=False):
                               beta=beta,
                               gamma=0.0)
 
+    # Convert to pseudo color map from gray-scale image
     wmap_color = cv2.applyColorMap(normalize_uint8(wmap), cv2.COLORMAP_JET)
 
     canvas = np.hstack((img, pseudo_label, overlap, wmap_color))
