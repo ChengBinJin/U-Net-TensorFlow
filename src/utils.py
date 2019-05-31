@@ -67,7 +67,7 @@ def make_folders(is_train, cur_time=None):
     return model_dir, log_dir, sample_dir
 
 
-def imshow(img, label, idx, alpha=0.6, delay=1, log_dir=None, show=False):
+def imshow(img, label, wmap, idx, alpha=0.6, delay=1, log_dir=None, show=False):
     img_dir = os.path.join(log_dir, 'img')
     if not os.path.isdir(img_dir):
         os.makedirs(img_dir)
@@ -86,7 +86,9 @@ def imshow(img, label, idx, alpha=0.6, delay=1, log_dir=None, show=False):
                               beta=beta,
                               gamma=0.0)
 
-    canvas = np.hstack((img, pseudo_label, overlap))
+    wmap_color = cv2.applyColorMap(normalize_uint8(wmap), cv2.COLORMAP_JET)
+
+    canvas = np.hstack((img, pseudo_label, overlap, wmap_color))
     cv2.imwrite(os.path.join(img_dir, 'GT_' + str(idx).zfill(2) + '.png'), canvas)
 
     if show:
@@ -94,6 +96,11 @@ def imshow(img, label, idx, alpha=0.6, delay=1, log_dir=None, show=False):
 
         if cv2.waitKey(delay) & 0xFF == 27:
             sys.exit('Esc clicked!')
+
+def normalize_uint8(x, fit=255):
+    x_min, x_max = x.min(), x.max()
+    x_norm = np.uint8(fit * (x - x_min) / (x_max - x_min))
+    return x_norm
 
 
 def pseudoColor(label, thickness=3):

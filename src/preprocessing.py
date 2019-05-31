@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tifffile as tiff
 
-def main(dataset_path=None):
+def main(dataset_path=None, is_write=False):
     # train_imgs = tiff.imread(os.path.join(dataset_path, 'train-volume.tif'))
     train_labels = tiff.imread(os.path.join(dataset_path, 'train-labels.tif'))
 
@@ -12,13 +12,48 @@ def main(dataset_path=None):
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
-    wmaps = np.zeros_like(train_labels, dtype=np.float32)
-    for idx in range(train_labels.shape[0]):
-        print('Image index: {}'.format(idx))
-        img = train_labels[idx]
-        cal_weight_map(label=img, wmaps=wmaps, save_dir=save_dir, iter_time=idx)
+    file_name = os.path.join(dataset_path, 'train-wmaps.npy')
+    if is_write:
+        wmaps = np.zeros_like(train_labels, dtype=np.float32)
+        for idx in range(train_labels.shape[0]):
+            print('Image index: {}'.format(idx))
+            img = train_labels[idx]
+            cal_weight_map(label=img, wmaps=wmaps, save_dir=save_dir, iter_time=idx)
 
-    np.save(os.path.join(dataset_path, 'train-wmaps.npy', wmaps))
+        np.save(file_name, wmaps)
+
+    wmaps = np.load(file_name)
+    plot_wmaps(wmaps)
+
+
+def plot_wmaps(wmaps, nrows=5, ncols=6, hspace=0.2, wspace=0.1, vmin=0., vmax=12., interpolation='nearest'):
+    # Create figure with sub-plots.
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(18, 10))
+
+    # Adjust vertical and horizontal spacing
+    fig.subplots_adjust(hspace=hspace, wspace=wspace)
+
+    im = None
+    for i, ax in enumerate(axes.flat):
+        if i < (nrows * ncols):
+            # Plot image
+            im = ax.imshow(wmaps[i], interpolation=interpolation, cmap=plt.cm.jet, vmin=vmin, vmax=vmax)
+
+            # Show the classes as the label on the x-axis.
+            xlabel = "Weight Map: {0}".format(str(i).zfill(2))
+            ax.set_xlabel(xlabel)
+
+            # Remove ticks from the plot.
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+            # Add colorbar
+            # fig.colorbar(im)  # cmap=plt.cm.jet, vmin=vmin, vmax=vmax,
+
+    # fig.subplots_adjust(right=0.8)
+    fig.colorbar(im, ax=axes.ravel().tolist())
+
+    plt.show()
 
 
 def cal_weight_map(label, wmaps, save_dir, iter_time, wc=1., w0=10., sigma=5, interval=500, vmin=0, vmax=12):
@@ -53,6 +88,6 @@ def cal_weight_map(label, wmaps, save_dir, iter_time, wc=1., w0=10., sigma=5, in
 
 
 if __name__ == '__main__':
-    main(dataset_path='../../Data/EMSegmentation')
+    main(dataset_path='../../Data/EMSegmentation', is_write=False)
 
 

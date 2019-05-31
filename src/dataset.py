@@ -31,6 +31,7 @@ class Dataset(object):
 
         self.train_imgs = tiff.imread(os.path.join(self.dataset_path, 'train-volume.tif'))
         self.train_labels = tiff.imread(os.path.join(self.dataset_path, 'train-labels.tif'))
+        self.train_wmaps = np.load(os.path.join(self.dataset_path, 'train-wmaps.npy'))
         self.test_imgs = tiff.imread(os.path.join(self.dataset_path, 'test-volume.tif'))
         self.mean_value = np.mean(self.train_imgs)
 
@@ -60,21 +61,23 @@ class Dataset(object):
         if use_logging:
             logger.info('- Training-img set:\t{}'.format(self.train_imgs.shape))
             logger.info('- Training-label set:\t{}'.format(self.train_labels.shape))
+            logger.info('- Training-wmap set:\t{}'.format(self.train_wmaps.shape))
             logger.info('- Test-img set:\t\t{}'.format(self.test_imgs.shape))
 
             logger.info('- image shape:\t\t{}'.format(self.img_shape))
         else:
             print('- Training-img set:\t{}'.format(self.train_imgs.shape))
             print('- Training-label set:\t{}'.format(self.train_labels.shape))
+            print('- Training-wmap set:\t{}'.format(self.train_wmaps.shape))
             print('- Test-img set:\t\t{}'.format(self.test_imgs.shape))
             print('- image shape:\t\t{}'.format(self.img_shape))
 
         print('[*] Saving data augmented images to check U-Net fundamentals...')
         for idx in range(self.num_train):
-            img_, label_ = self.train_imgs[idx], self.train_labels[idx]
-            utils.imshow(img_, label_, idx, log_dir=log_dir)
-            utils.test_augmentation(img_, label_, idx, log_dir=log_dir)
-            utils.test_cropping(img_, label_, idx, self.input_size, self.output_size, log_dir=log_dir)
+            img_, label_, wmap_ = self.train_imgs[idx], self.train_labels[idx], self.train_wmaps[idx]
+            utils.imshow(img_, label_, wmap_, idx, log_dir=log_dir)
+            # utils.test_augmentation(img_, label_, idx, log_dir=log_dir)
+            # utils.test_cropping(img_, label_, idx, self.input_size, self.output_size, log_dir=log_dir)
         print('[!] Saving data augmented images to check U-Net fundamentals!')
 
 
