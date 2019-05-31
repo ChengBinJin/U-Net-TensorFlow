@@ -90,25 +90,25 @@ def main(_):
     data = Dataset(name=FLAGS.dataset, log_dir=log_dir)
     data.info(use_logging=True, log_dir=log_dir)
 
-    # # Initialize session
-    # sess = tf.Session()
-    #
-    # # Initilize model
-    # model = Model(input_shape=data.input_shape,
-    #               output_shape=data.output_shape,
-    #               lr=FLAGS.learning_rate,
-    #               weight_decay=FLAGS.weight_decay,
-    #               total_iters=FLAGS.iters,
-    #               is_train=FLAGS.is_train,
-    #               log_dir=log_dir,
-    #               name='U-Net')
-    #
-    # # Initilize solver
-    # solver = Solver(sess, model, data.mean_value)
-    # saver = tf.train.Saver(max_to_keep=1)
-    #
-    # if FLAGS.is_train:
-    #     train(data, solver, saver, model_dir, log_dir, sample_dir)
+    # Initialize session
+    sess = tf.Session()
+
+    # Initilize model
+    model = Model(input_shape=data.input_shape,
+                  output_shape=data.output_shape,
+                  lr=FLAGS.learning_rate,
+                  weight_decay=FLAGS.weight_decay,
+                  total_iters=FLAGS.iters,
+                  is_train=FLAGS.is_train,
+                  log_dir=log_dir,
+                  name='U-Net')
+
+    # Initilize solver
+    solver = Solver(sess, model, data.mean_value)
+    saver = tf.train.Saver(max_to_keep=1)
+
+    if FLAGS.is_train:
+        train(data, solver, saver, model_dir, log_dir, sample_dir)
 
 
 def train(data, solver, saver, model_dir, log_dir, sample_dir):
@@ -118,7 +118,7 @@ def train(data, solver, saver, model_dir, log_dir, sample_dir):
     solver.init()
 
     for iter_time in range(FLAGS.iters):
-        x_batch, y_batch = data.random_batch(batch_size=FLAGS.batch_size, idx=iter_time)
+        x_batch, y_batch, w_batch = data.random_batch(batch_size=FLAGS.batch_size, idx=iter_time)
         _, total_loss, data_loss, reg_term, summary, pred_cls = solver.train(x_batch, y_batch)
 
         # Write to tensorbard
@@ -133,8 +133,8 @@ def train(data, solver, saver, model_dir, log_dir, sample_dir):
             solver.save_imgs(x_batch, pred_cls, y_batch, iter_time, sample_dir)
 
         if np.mod(iter_time, FLAGS.eval_freq) == 0:
-            x_batch, y_batch = data.random_batch(batch_size=FLAGS.batch_size * 20,
-                                                 idx=np.random.randint(low=0, high=FLAGS.iters))
+            x_batch, y_batch, w_batch = data.random_batch(batch_size=FLAGS.batch_size * 20,
+                                                          idx=np.random.randint(low=0, high=FLAGS.iters))
             acc, summary = solver.test(x_batch, y_batch, batch_size=FLAGS.batch_size, is_train=True)
             print('Evaluation! \tAcc: {:.3f}'.format(acc))
 
