@@ -74,38 +74,36 @@ class Dataset(object):
 
         print('[*] Saving data augmented images to check U-Net fundamentals...')
         for idx in range(self.num_train):
-            img_ = self.train_imgs[idx].copy()
-            label_ = self.train_labels[idx].copy()
-            wmap_= self.train_wmaps[idx].copy()
+            img_, label_, wmap_ = self.train_imgs[idx], self.train_labels[idx], self.train_wmaps[idx]
             utils.imshow(img_, label_, wmap_, idx, log_dir=log_dir)
-            # utils.test_augmentation(img_, label_, idx, log_dir=log_dir)
+            utils.test_augmentation(img_, label_, wmap_, idx, log_dir=log_dir)
             # utils.test_cropping(img_, label_, idx, self.input_size, self.output_size, log_dir=log_dir)
         print('[!] Saving data augmented images to check U-Net fundamentals!')
 
 
-    def random_batch(self, idx, batch_size=2):
-        idx = idx % self.num_train
-        x_img, y_label = self.train_imgs[idx], self.train_labels[idx]
-
-        x_batchs = np.zeros((batch_size, self.input_size, self.input_size), dtype=np.float32)
-        # y_batchs will be represented in one-hot in solver.train()
-        y_batchs = np.zeros((batch_size, self.output_size, self.output_size), dtype=np.float32)
-        for idx in range(batch_size):
-            x_batch, y_batch = utils.aug_translate(x_img, y_label)        # random translation
-            x_batch, y_batch = utils.aug_flip(x_batch, y_batch)           # random horizontal and vertical flip
-            x_batch, y_batch = utils.aug_rotate(x_batch, y_batch)         # random rotation
-            x_batch, y_batch = utils.aug_elastic_deform(x_batch, y_batch) # random elastic deformation
-
-            # Following the originl U-Net paper
-            # Resize image to 696(696=572+92*2) x 696(696=572+92*2) then crop 572 x 572 input image
-            # and 388 x 388 lable map
-            # 92 = (572 - 388) / 2
-            x_batch, y_batch = utils.cropping(x_batch, y_batch, self.input_size, self.output_size)
-
-            x_batchs[idx, :, :] = x_batch
-            y_batchs[idx, :, :] = y_batch
-
-        return self.zero_centering(x_batchs), (y_batchs / 255).astype(np.uint8)
+    # def random_batch(self, idx, batch_size=2):
+    #     idx = idx % self.num_train
+    #     x_img, y_label = self.train_imgs[idx], self.train_labels[idx]
+    #
+    #     x_batchs = np.zeros((batch_size, self.input_size, self.input_size), dtype=np.float32)
+    #     # y_batchs will be represented in one-hot in solver.train()
+    #     y_batchs = np.zeros((batch_size, self.output_size, self.output_size), dtype=np.float32)
+    #     for idx in range(batch_size):
+    #         x_batch, y_batch = utils.aug_translate(x_img, y_label)        # random translation
+    #         x_batch, y_batch = utils.aug_flip(x_batch, y_batch)           # random horizontal and vertical flip
+    #         x_batch, y_batch = utils.aug_rotate(x_batch, y_batch)         # random rotation
+    #         x_batch, y_batch = utils.aug_elastic_deform(x_batch, y_batch) # random elastic deformation
+    #
+    #         # Following the originl U-Net paper
+    #         # Resize image to 696(696=572+92*2) x 696(696=572+92*2) then crop 572 x 572 input image
+    #         # and 388 x 388 lable map
+    #         # 92 = (572 - 388) / 2
+    #         x_batch, y_batch = utils.cropping(x_batch, y_batch, self.input_size, self.output_size)
+    #
+    #         x_batchs[idx, :, :] = x_batch
+    #         y_batchs[idx, :, :] = y_batch
+    #
+    #     return self.zero_centering(x_batchs), (y_batchs / 255).astype(np.uint8)
 
     def zero_centering(self, imgs):
         return imgs - self.mean_value
