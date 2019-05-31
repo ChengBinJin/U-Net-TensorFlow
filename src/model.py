@@ -49,8 +49,7 @@ class Model(object):
 
         # Loss = data loss + regularization term
         self.data_loss = tf.reduce_mean(
-            tf.nn.sigmoid_cross_entropy_with_logits(labels=self.out_img_one_hot, logits=self.pred))
-        # TODO: change to tf.nn.softmax_cross_entropy_with_logits_v2
+            tf.nn.softmax_cross_entropy_with_logits_v2(labels=self.out_img_one_hot, logits=self.pred))
         self.reg_term = self.weight_decay * tf.reduce_sum(
             [tf.nn.l2_loss(weight) for weight in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)])
         self.total_loss = self.data_loss + self.reg_term

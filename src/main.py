@@ -21,7 +21,7 @@ tf.flags.DEFINE_string('dataset', 'EMSegmentation', 'dataset name, default: EMSe
 tf.flags.DEFINE_integer('batch_size', 4, 'batch size for one iteration, default: 4')
 tf.flags.DEFINE_bool('is_train', True, 'training or inference mode, default: True')
 tf.flags.DEFINE_float('learning_rate', 1e-3, 'initial learning rate for optimizer, default: 0.001')
-tf.flags.DEFINE_float('weight_decay', 1e-5, 'weight decay for model to handle overfitting, default: 0.00001')
+tf.flags.DEFINE_float('weight_decay', 1e-4, 'weight decay for model to handle overfitting, default: 0.0001')
 tf.flags.DEFINE_integer('iters', 100, 'number of iterations for one epoch, default: 20,000')
 tf.flags.DEFINE_integer('print_freq', 10, 'print frequency for loss information, default: 10')
 tf.flags.DEFINE_integer('sample_freq', 10, 'sample frequence for checking qualitative evaluation, default: 100')
@@ -136,7 +136,7 @@ def train(data, solver, saver, model_dir, log_dir, sample_dir):
             x_batch, y_batch, w_batch = data.random_batch(batch_size=FLAGS.batch_size * 20,
                                                           idx=np.random.randint(low=0, high=FLAGS.iters))
             acc, summary = solver.test(x_batch, y_batch, batch_size=FLAGS.batch_size, is_train=True)
-            print('Evaluation! \tAcc: {:.3f}'.format(acc))
+            print('Evaluation! \tAcc: {:.3f} \tBest Acc: {:.3f}'.format(acc, best_acc))
 
             # Write to tensorboard
             tb_writer.add_summary(summary, num_evals)
