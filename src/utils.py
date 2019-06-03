@@ -437,6 +437,61 @@ def aug_perturbation(img, label, wmap, low=0.8, high=1.2):
     return img_en, label, wmap
 
 
+def test_imshow(img, idx, input_size=572, output_size=388, test_dir=None, margin=5, white=(255, 255, 255), thickness=2):
+    border_size = int((input_size - output_size) * 0.5)
+    img_pad = cv2.copyMakeBorder(img, border_size, border_size, border_size, border_size, cv2.BORDER_REFLECT_101)
+
+    # Draw boundary lines
+    img_pad = cv2.line(img=img_pad,
+                       pt1=(0, border_size),
+                       pt2=(img_pad.shape[1] - 1, border_size),
+                       color=white,
+                       thickness=thickness)
+    img_pad = cv2.line(img=img_pad,
+                       pt1=(0, img_pad.shape[0] - 1 - border_size),
+                       pt2=(img_pad.shape[1] - 1, img_pad.shape[0] - 1 - border_size),
+                       color=white,
+                       thickness=thickness)
+    img_pad = cv2.line(img=img_pad,
+                       pt1=(border_size, 0),
+                       pt2=(border_size, img_pad.shape[0] - 1),
+                       color=white,
+                       thickness=thickness)
+    img_pad = cv2.line(img=img_pad,
+                       pt1=(img_pad.shape[1] - 1 - border_size, 0),
+                       pt2=(img_pad.shape[1] - 1 - border_size, img_pad.shape[0] - 1),
+                       color=white,
+                       thickness=thickness)
+
+    # Crop 4 corners from the padded image
+    img0 = img_pad[:input_size, :input_size]
+    img1 = img_pad[:input_size, -input_size:]
+    img2 = img_pad[-input_size:, :input_size]
+    img3 = img_pad[-input_size:, -input_size:]
+
+    canvas = np.zeros((2*input_size+3*margin, 2*input_size+img_pad.shape[1]+4*margin))
+    canvas[margin:margin+img_pad.shape[0], margin:margin+img_pad.shape[1]] = img_pad
+    canvas[margin:margin+input_size, 2*margin+img_pad.shape[1]:2*margin+img_pad.shape[1]+input_size] = img0
+    canvas[margin:margin+input_size, 3*margin+img_pad.shape[1]+input_size:3*margin+img_pad.shape[1]+2*input_size] = img1
+    canvas[2*margin+input_size:2*margin+2*input_size, 2*margin+img_pad.shape[1]:2*margin+img_pad.shape[1]+input_size] = img2
+    canvas[2*margin+input_size:2*margin+2*input_size, 3*margin+img_pad.shape[1]+input_size:3*margin+img_pad.shape[1]+2*input_size] = img3
+
+    cv2.imwrite(os.path.join(test_dir, 'GT_' + str(idx).zfill(2) + '.png'), canvas)
+
+def test_data_cropping(img, input_size, output_size, num_blocks=4):
+    x_batchs = np.zeros((num_blocks, input_size, input_size), dtype=np.float32)
+
+    border_size = int((input_size - output_size) * 0.5)
+    img_pad = cv2.copyMakeBorder(img, border_size, border_size, border_size, border_size, cv2.BORDER_REFLECT_101)
+
+    # Crop 4 corners from the padded image
+    x_batchs[0] = img_pad[:input_size, :input_size]
+    x_batchs[1] = img_pad[:input_size, -input_size:]
+    x_batchs[2] = img_pad[-input_size:, :input_size]
+    x_batchs[3] = img_pad[-input_size:, -input_size:]
+    return x_batchs
+
+
 def cropping(img, label, wmap, input_size, output_size, is_extend=False):
     border_size = int((input_size - output_size) * 0.5)
     rand_pos_h = np.random.randint(low=0, high=img.shape[0] - output_size)
@@ -453,9 +508,39 @@ def cropping(img, label, wmap, input_size, output_size, is_extend=False):
         return img_crop, label_crop, wmap_crop
 
 
+def merge_preds(preds, idx, ori_size=512, output_size=388, test_dir=None, is_save=False, margin=5):
+    result = np.zeros((ori_size, ori_size, 2), dtype=np.float32)
+
+    result[:output_size, :output_size] += preds[0]
+    result[:output_size, -output_size:] += preds[1]
+    result[-output_size:, :output_size] += preds[2]
+    result[-output_size:, -output_size:] += preds[3]
+
+    result = np.argmax(result, axis=2)
+
+    if is_save:
+        canvas = np.zeros((2*output_size+3*margin, 2*output_size+ori_size+4*margin), dtype=np.uint8)
+
+        # Score to prediction class
+        preds_cls = np.argmax(preds, axis=3)
+
+        # Copy five results
+        canvas[margin:margin+output_size, margin:margin+output_size] = np.uint8(preds_cls[0] * 255.)
+        canvas[margin:margin+output_size, 2*margin+output_size:2*margin+2*output_size] = np.uint8(preds_cls[1] * 255.)
+        canvas[2*margin+output_size:2*margin+2*output_size, margin:margin+output_size] = np.uint8(preds_cls[2] * 255.)
+        canvas[2*margin+output_size:2*margin+2*output_size, 2*margin+output_size:2*margin+2*output_size] = np.uint8(preds_cls[3] * 255.)
+        canvas[margin:margin+ori_size, 3*margin+2*output_size:3*margin+2*output_size+ori_size] = np.uint8(result * 255.)
+
+        # Save results
+        cv2.imwrite(os.path.join(test_dir, 'Pred_' + str(idx).zfill(2) + '.png'), canvas)
+
+    return result
+
+
 def pre_bilaterFilter(img, d=3, sigmaColor=75, simgaSpace=75):
     pre_img = cv2.bilateralFilter(src=img, d=d, sigmaColor=sigmaColor, sigmaSpace=simgaSpace)
     return pre_img
+
 
 def acc_measure(true_arr, pred_arr):
     cm = confusion_matrix(true_arr, pred_arr)

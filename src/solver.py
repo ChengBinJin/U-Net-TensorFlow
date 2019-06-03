@@ -3,6 +3,8 @@ import cv2
 import numpy as np
 import tensorflow as tf
 
+import utils as utils
+
 
 class Solver(object):
     def __init__(self, sess, model, mean_value):
@@ -29,7 +31,7 @@ class Solver(object):
         return self.sess.run([train_op, total_loss, avg_data_loass, weighted_data_loss, reg_term, summary, pred_cls],
                              feed_dict=feed)
 
-    def test(self, x, y, batch_size=4, is_train=True):
+    def evalate(self, x, y, batch_size=4):
         print(' [*] Evaluation...')
 
         num_test = x.shape[0]
@@ -54,12 +56,20 @@ class Solver(object):
             avg_acc += self.sess.run(acc_op, feed_dict=feed)
 
         avg_acc = np.float32(avg_acc / np.ceil(num_test / batch_size))
+        summary = self.sess.run(self.model.val_acc_op, feed_dict={self.model.val_acc: avg_acc})
 
-        if is_train:
-            summary = self.sess.run(self.model.val_acc_op, feed_dict={self.model.val_acc: avg_acc})
-            return avg_acc, summary
-        else:
-            return avg_acc
+        return avg_acc, summary
+
+    def test(self, x, iter_time, test_dir):
+        feed = {
+            self.model.inp_img: np.expand_dims(x, axis=3),
+            self.model.keep_prob: 1.0
+        }
+
+        preds = self.sess.run(self.model.pred, feed_dict=feed)
+        pred = utils.merge_preds(preds, idx=iter_time, test_dir=test_dir, is_save=True)
+
+        return pred
 
     def save_imgs(self, x_imgs, pred_imgs, y_imgs, iter_time, sample_dir=None, border=5):
         num_cols = 3

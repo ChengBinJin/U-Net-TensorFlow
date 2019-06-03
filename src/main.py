@@ -143,7 +143,7 @@ def train(data, solver, saver, model_dir, log_dir, sample_dir):
         if np.mod(iter_time, FLAGS.eval_freq) == 0:
             x_batch, y_batch, w_batch = data.random_batch(batch_size=FLAGS.batch_size * 20,
                                                           idx=np.random.randint(low=0, high=FLAGS.iters))
-            acc, summary = solver.test(x_batch, y_batch, batch_size=FLAGS.batch_size, is_train=True)
+            acc, summary = solver.evalate(x_batch, y_batch, batch_size=FLAGS.batch_size, is_train=True)
             print('Evaluation! \tAcc: {:.3f} \tBest Acc: {:.3f}'.format(acc, best_acc))
 
             # Write to tensorboard
@@ -165,7 +165,14 @@ def test(data, solver, saver, model_dir, test_dir):
     else:
         print(' [!] Load Failed!')
 
-    print('iter_time: {}'.format(iter_time))
+    data.info_test(test_dir)
+
+    for iter_time in range(data.num_test):
+        print('iter: {}'.format(iter_time))
+
+        x_batchs = data.test_batch(iter_time)
+        y_pred = solver.test(x_batchs, iter_time, test_dir)
+
 
 
 def save_model(saver, solver, model_dir, iter_time, best_acc):

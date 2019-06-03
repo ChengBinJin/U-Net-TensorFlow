@@ -5,8 +5,8 @@
 # Email: sbkim0407@gmail.com
 # ---------------------------------------------------------
 import os
-# import sys
-# import cv2
+import sys
+import cv2
 import logging
 import numpy as np
 import tifffile as tiff
@@ -72,13 +72,20 @@ class Dataset(object):
             print('- Test-img set:\t\t{}'.format(self.test_imgs.shape))
             print('- image shape:\t\t{}'.format(self.img_shape))
 
-        print('[*] Saving data augmented images to check U-Net fundamentals...')
+        print(' [*] Saving data augmented images to check U-Net fundamentals...')
         for idx in range(self.num_train):
             img_, label_, wmap_ = self.train_imgs[idx], self.train_labels[idx], self.train_wmaps[idx]
             utils.imshow(img_, label_, wmap_, idx, log_dir=log_dir)
             utils.test_augmentation(img_, label_, wmap_, idx, log_dir=log_dir)
             utils.test_cropping(img_, label_, wmap_, idx, self.input_size, self.output_size, log_dir=log_dir)
-        print('[!] Saving data augmented images to check U-Net fundamentals!')
+        print(' [!] Saving data augmented images to check U-Net fundamentals!')
+
+    def info_test(self, test_dir):
+        print(' [*] Saving test data cropping to check U-Net fundamentals...')
+        for idx in range(self.num_test):
+            img = self.test_imgs[idx]
+            utils.test_imshow(img, idx, test_dir=test_dir)
+        print(' [!] Saving test data cropping to check U-net fundamentals!')
 
 
     def random_batch(self, idx, batch_size=2):
@@ -113,6 +120,15 @@ class Dataset(object):
             w_batchs[idx, :, :] = w_batch
 
         return self.zero_centering(x_batchs), (y_batchs / 255).astype(np.uint8), w_batchs
+
+    def test_batch(self, idx):
+        x_img = self.test_imgs[idx]
+        x_batchs = utils.test_data_cropping(img=x_img,
+                                            input_size=self.input_size,
+                                            output_size=self.output_size,
+                                            num_blocks=4)
+
+        return self.zero_centering(x_batchs)
 
     def zero_centering(self, imgs):
         return imgs - self.mean_value
