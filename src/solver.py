@@ -10,21 +10,24 @@ class Solver(object):
         self.model = model
         self.mean_value = mean_value
 
-    def train(self, x, y):
+    def train(self, x, y, wmap):
         feed = {
             self.model.inp_img: np.expand_dims(x, axis=3),
             self.model.out_img: y,
+            self.model.weight_map: wmap,
             self.model.keep_prob: 0.5
         }
 
         train_op = self.model.train_op
         total_loss = self.model.total_loss
-        data_loss = self.model.data_loss
+        avg_data_loass = self.model.avg_data_loss
+        weighted_data_loss = self.model.weighted_data_loss
         reg_term = self.model.reg_term
         pred_cls = self.model.pred_cls
         summary = self.model.summary_op
 
-        return self.sess.run([train_op, total_loss, data_loss, reg_term, summary, pred_cls], feed_dict=feed)
+        return self.sess.run([train_op, total_loss, avg_data_loass, weighted_data_loss, reg_term, summary, pred_cls],
+                             feed_dict=feed)
 
     def test(self, x, y, batch_size=4, is_train=True):
         print(' [*] Evaluation...')
@@ -75,6 +78,12 @@ class Solver(object):
 
         cv2.imwrite(os.path.join(sample_dir, str(iter_time).zfill(5) + '.png'), canvas)
 
+    def save_acc_record(self, acc):
+        self.sess.run(self.model.save_best_acc_op, feed_dict={self.model.val_acc: acc})
+
+    def load_acc_record(self):
+        best_acc = self.sess.run(self.model.best_acc_record)
+        return best_acc
 
     def init(self):
         self.sess.run(tf.global_variables_initializer())

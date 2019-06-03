@@ -22,7 +22,7 @@ tf.flags.DEFINE_integer('batch_size', 4, 'batch size for one iteration, default:
 tf.flags.DEFINE_bool('is_train', True, 'training or inference mode, default: True')
 tf.flags.DEFINE_float('learning_rate', 1e-3, 'initial learning rate for optimizer, default: 0.001')
 tf.flags.DEFINE_float('weight_decay', 1e-4, 'weight decay for model to handle overfitting, default: 0.0001')
-tf.flags.DEFINE_integer('iters', 100, 'number of iterations for one epoch, default: 20,000')
+tf.flags.DEFINE_integer('iters', 120, 'number of iterations for one epoch, default: 20,000')
 tf.flags.DEFINE_integer('print_freq', 10, 'print frequency for loss information, default: 10')
 tf.flags.DEFINE_integer('sample_freq', 10, 'sample frequence for checking qualitative evaluation, default: 100')
 tf.flags.DEFINE_integer('eval_freq', 20, 'evaluation frequency for batch accuracy, default: 200')
@@ -83,7 +83,7 @@ def main(_):
     else:
         cur_time = FLAGS.load_model
 
-    model_dir, log_dir, sample_dir = make_folders(is_train=FLAGS.is_train, cur_time=cur_time)
+    model_dir, log_dir, sample_dir, test_dir = make_folders(is_train=FLAGS.is_train, cur_time=cur_time)
     init_logger(log_dir=log_dir, is_train=FLAGS.is_train)
 
     # Initilize dataset
@@ -109,6 +109,8 @@ def main(_):
 
     if FLAGS.is_train:
         train(data, solver, saver, model_dir, log_dir, sample_dir)
+    else:
+        test(data, solver, saver, model_dir, test_dir)
 
 
 def train(data, solver, saver, model_dir, log_dir, sample_dir):
@@ -117,17 +119,23 @@ def train(data, solver, saver, model_dir, log_dir, sample_dir):
     tb_writer = tf.summary.FileWriter(log_dir, graph_def=solver.sess.graph_def)
     solver.init()
 
-    for iter_time in range(FLAGS.iters):
+    iter_time = 0
+    if FLAGS.load_model is not None:
+        flag, iter_time, best_acc = load_model(saver, solver, model_dir, is_train=True)
+        logger.info(' [!] Load Success! Iter: {}, Best acc: {:.3f}'.format(iter_time, best_acc))
+
+    for iter_time in range(iter_time, FLAGS.iters):
         x_batch, y_batch, w_batch = data.random_batch(batch_size=FLAGS.batch_size, idx=iter_time)
-        _, total_loss, data_loss, reg_term, summary, pred_cls = solver.train(x_batch, y_batch)
+        _, total_loss, avg_data_loss, weighted_data_loss, reg_term, summary, pred_cls = \
+            solver.train(x_batch, y_batch, w_batch)
 
         # Write to tensorbard
         tb_writer.add_summary(summary, iter_time)
         tb_writer.flush()
 
         if np.mod(iter_time, FLAGS.print_freq) == 0:
-            msg = '{}/{}: \tTotal loss: {:.3f}, \tData loss: {:.3f}, \tReg. term: {:.3f}'
-            print(msg.format(iter_time, FLAGS.iters, total_loss, data_loss, reg_term))
+            msg = '{}/{}: \tTotal loss: {:.3f}, \tAvg. data loss: {:.3f}, \tWeighted data loss: {:.3f} \tReg. term: {:.3f}'
+            print(msg.format(iter_time, FLAGS.iters, total_loss, avg_data_loss, weighted_data_loss, reg_term))
 
         if np.mod(iter_time, FLAGS.sample_freq) == 0:
             solver.save_imgs(x_batch, pred_cls, y_batch, iter_time, sample_dir)
@@ -145,17 +153,49 @@ def train(data, solver, saver, model_dir, log_dir, sample_dir):
 
             if acc > best_acc:
                 logger.info('Acc: {:.3f}, Best Acc: {:.3f}'.format(acc, best_acc))
-                save_model(saver, solver, model_dir, iter_time)
                 best_acc = acc
+                save_model(saver, solver, model_dir, iter_time, best_acc)
 
 
-def test():
-    print('Hello test!')
+def test(data, solver, saver, model_dir, test_dir):
+    # Load checkpoint
+    flag, iter_time, best_acc = load_model(saver, solver, model_dir, is_train=False)
+    if flag is True:
+        print(' [!] Load Success! Iter: {}, Best acc: {:.3f}'.format(iter_time, best_acc))
+    else:
+        print(' [!] Load Failed!')
+
+    print('iter_time: {}'.format(iter_time))
 
 
-def save_model(saver, solver, model_dir, iter_time):
+def save_model(saver, solver, model_dir, iter_time, best_acc):
+    solver.save_acc_record(best_acc)
     saver.save(solver.sess, os.path.join(model_dir, 'model'), global_step=iter_time)
-    logger.info(' [*] Model saved! Iter: {}'.format(iter_time))
+    logger.info(' [*] Model saved! Iter: {}, Best Acc.: {:.3f}'.format(iter_time, best_acc))
+
+
+def load_model(saver, solver, model_dir, is_train=False):
+    if is_train:
+        logger.info(' [*] Reading checkpoint...')
+    else:
+        print(' [*] Reading checkpoint...')
+
+    ckpt = tf.train.get_checkpoint_state(model_dir)
+    if ckpt and ckpt.model_checkpoint_path:
+        ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
+        saver.restore(solver.sess, os.path.join(model_dir, ckpt_name))
+
+        meta_graph_path = ckpt.model_checkpoint_path + '.meta'
+        iter_time = int(meta_graph_path.split('-')[-1].split('.')[0])
+        best_acc = solver.load_acc_record()
+
+        if is_train:
+            logger.info(' [!] Load Iter: {}, Best Acc.: {:.3f}'.format(iter_time, best_acc))
+
+        return True, iter_time, best_acc
+    else:
+        return False, 0, 0.
+
 
 
 if __name__ == '__main__':

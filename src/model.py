@@ -37,8 +37,13 @@ class Model(object):
         # Input placeholders
         self.inp_img = tf.placeholder(dtype=tf.float32, shape=[None, *self.input_shape], name='input_img')
         self.out_img = tf.placeholder(dtype=tf.uint8, shape=[None, *self.output_shape], name='output_img')
+        self.weight_map = tf.placeholder(dtype=tf.float32, shape=[None, *self.output_shape], name='weight_map')
         self.keep_prob = tf.placeholder(dtype=tf.float32, name='keep_prob')
         self.val_acc = tf.placeholder(dtype=tf.float32, name='val_acc')
+
+        # Best acc record
+        self.best_acc_record = tf.get_variable(name='best_acc_save', dtype=tf.float32, initializer=tf.constant(0.),
+                                               trainable=False)
 
         # One-hot representation
         self.out_img_one_hot = tf.one_hot(indices=self.out_img, depth=2, axis=-1, dtype=tf.float32, name='one_hot')
@@ -47,12 +52,17 @@ class Model(object):
         self.u_net()
         self.pred_cls = tf.math.argmax(input=self.pred, axis=-1)
 
-        # Loss = data loss + regularization term
-        self.data_loss = tf.reduce_mean(
-            tf.nn.softmax_cross_entropy_with_logits_v2(labels=self.out_img_one_hot, logits=self.pred))
+        # Data loss
+        self.data_loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=self.out_img_one_hot, logits=self.pred)
+        self.avg_data_loss = tf.reduce_mean(self.data_loss)
+        self.weighted_data_loss = tf.reduce_mean(self.weight_map * self.data_loss)
+
+        # Regularization term
         self.reg_term = self.weight_decay * tf.reduce_sum(
             [tf.nn.l2_loss(weight) for weight in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)])
-        self.total_loss = self.data_loss + self.reg_term
+
+        # Total loss = Data loss + Regularization term
+        self.total_loss = self.weighted_data_loss + self.reg_term
 
         # Optimizer
         self.train_op = self.optimizer_fn(loss=self.total_loss, name='Adam')
@@ -61,6 +71,7 @@ class Model(object):
         self.accuracy = tf.reduce_mean(
             tf.cast(tf.math.equal(x=tf.cast(tf.math.argmax(self.out_img_one_hot, axis=-1), dtype=tf.uint8),
                                   y=tf.cast(self.pred_cls, dtype=tf.uint8)), dtype=tf.float32)) * 100.
+        self.save_best_acc_op = tf.assign(self.best_acc_record, value=self.val_acc)
 
     def u_net(self):
         # Stage 1
@@ -114,7 +125,7 @@ class Model(object):
 
         # Stage 6
         s6_deconv1 = tf_utils.deconv2d(x=s5_conv2_drop, output_dim=self.conv_dims[10], k_h=2, k_w=2, initializer='He',
-                                       name='s6_deconv1')
+                                       name='s6_deconv1', logger=self.logger)
         # Cropping
         h1, w1 = s4_conv2_drop.get_shape().as_list()[1:3]
         h2, w2 = s6_deconv1.get_shape().as_list()[1:3]
@@ -135,7 +146,7 @@ class Model(object):
 
         # Stage 7
         s7_deconv1 = tf_utils.deconv2d(x=s6_conv3, output_dim=self.conv_dims[13], k_h=2, k_w=2, initializer='He',
-                                       name='s7_deconv1')
+                                       name='s7_deconv1', logger=self.logger)
         s7_deconv1 = tf_utils.relu(s7_deconv1, name='relu_s7_deconv1', logger=self.logger)
         # Cropping
         h1, w1 = s3_conv2.get_shape().as_list()[1:3]
@@ -157,7 +168,7 @@ class Model(object):
 
         # Stage 8
         s8_deconv1 = tf_utils.deconv2d(x=s7_conv3, output_dim=self.conv_dims[16], k_h=2, k_w=2, initializer='He',
-                                       name='s8_deconv1')
+                                       name='s8_deconv1', logger=self.logger)
         s8_deconv1 = tf_utils.relu(s8_deconv1, name='relu_s8_deconv1', logger=self.logger)
         # Cropping
         h1, w1 = s2_conv2.get_shape().as_list()[1:3]
@@ -179,7 +190,7 @@ class Model(object):
 
         # Stage 9
         s9_deconv1 = tf_utils.deconv2d(x=s8_conv3, output_dim=self.conv_dims[19], k_h=2, k_w=2, initializer='He',
-                                       name='s9_deconv1')
+                                       name='s9_deconv1', logger=self.logger)
         s9_deconv1 = tf_utils.relu(s9_deconv1, name='relu_s9_deconv1', logger=self.logger)
         # Cropping
         h1, w1 = s1_conv2.get_shape().as_list()[1:3]
@@ -222,9 +233,11 @@ class Model(object):
 
     def _tensorboard(self):
         self.tb_total = tf.summary.scalar('Loss/total', self.total_loss)
-        self.tb_data = tf.summary.scalar('Loss/data', self.data_loss)
+        self.tb_data = tf.summary.scalar('Loss/avg_data', self.avg_data_loss)
+        self.tb_weighted_data = tf.summary.scalar('Loss/weighted_data', self.weighted_data_loss)
         self.tb_reg = tf.summary.scalar('Loss/reg_term', self.reg_term)
-        self.summary_op = tf.summary.merge(inputs=[self.tb_lr, self.tb_total, self.tb_data, self.tb_reg])
+        self.summary_op = tf.summary.merge(
+            inputs=[self.tb_lr, self.tb_total, self.tb_data, self.tb_weighted_data, self.tb_reg])
 
         self.val_acc_op = tf.summary.scalar('Acc', self.val_acc)
 

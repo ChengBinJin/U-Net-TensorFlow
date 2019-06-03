@@ -118,10 +118,10 @@ class Dataset(object):
         return imgs - self.mean_value
 
 
-if __name__ == '__main__':
-    data = Dataset()
-
-    for i in range(data.num_train):
-        img, label = data.train_imgs[i], data.train_labels[i]
-        utils.imshow(img, label, idx=i)
+# if __name__ == '__main__':
+#     data = Dataset()
+#
+#     for i in range(data.num_train):
+#         img, label = data.train_imgs[i], data.train_labels[i]
+#         utils.imshow(img, label, idx=i)
 
