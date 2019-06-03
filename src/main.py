@@ -13,7 +13,7 @@ from datetime import datetime
 from dataset import Dataset
 from model import Model
 from solver import Solver
-from utils import make_folders
+import utils as utils
 
 FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string('gpu_index', '0', 'gpu index if you have multiple gpus, default: 0')
@@ -83,7 +83,7 @@ def main(_):
     else:
         cur_time = FLAGS.load_model
 
-    model_dir, log_dir, sample_dir, test_dir = make_folders(is_train=FLAGS.is_train, cur_time=cur_time)
+    model_dir, log_dir, sample_dir, test_dir = utils.make_folders(is_train=FLAGS.is_train, cur_time=cur_time)
     init_logger(log_dir=log_dir, is_train=FLAGS.is_train)
 
     # Initilize dataset
@@ -157,7 +157,7 @@ def train(data, solver, saver, model_dir, log_dir, sample_dir):
                 save_model(saver, solver, model_dir, iter_time, best_acc)
 
 
-def test(data, solver, saver, model_dir, test_dir):
+def test(data, solver, saver, model_dir, test_dir, start=0, stop=360, num=7):
     # Load checkpoint
     flag, iter_time, best_acc = load_model(saver, solver, model_dir, is_train=False)
     if flag is True:
@@ -165,14 +165,20 @@ def test(data, solver, saver, model_dir, test_dir):
     else:
         print(' [!] Load Failed!')
 
+    # Test
     data.info_test(test_dir)
 
     for iter_time in range(data.num_test):
         print('iter: {}'.format(iter_time))
 
-        x_batchs = data.test_batch(iter_time)
-        y_pred = solver.test(x_batchs, iter_time, test_dir)
+        y_preds = np.zeros((num, *data.img_shape, 2), dtype=np.float32)  # [N, H, W, 2]
+        x_ori_img = None
+        for i, angle in enumerate(np.linspace(start=start, stop=stop, num=num, endpoint=False)):
+            x_batchs, x_ori_img = data.test_batch(iter_time, angle)  # four corpped image for one test image
+            y_preds[i] = solver.test(x_batchs, iter_time, angle, test_dir, is_save=True)
 
+        # Merge rotated label images
+        y_pred = utils.merge_rotated_preds(y_preds, x_ori_img, iter_time, start, stop, num, test_dir, is_save=True)
 
 
 def save_model(saver, solver, model_dir, iter_time, best_acc):

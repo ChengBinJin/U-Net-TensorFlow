@@ -400,6 +400,18 @@ def aug_flip(img, label, wmap):
 
     return img_vflip, label_vflip, wmap_vflip
 
+def test_rotate(img, iter_time, test_dir=None, margin=5, start=0, stop=360, num=7):
+    h, w = img.shape
+    canvas = np.zeros((2*margin+h, num*w+(num+1)*margin), dtype=np.uint8)
+
+    # Rotate test image using 60 degree interval
+    for i, angle in enumerate(np.linspace(start=start, stop=stop, num=num, endpoint=False)):
+        # print('angle: {:.3f}'.format(angle))
+        img_rotate = rotate(input=img, angle=angle, axes=(0, 1), reshape=False, order=3, mode='reflect')
+        canvas[margin:margin+h, (i+1)*margin+i*w:(i+1)*margin+(i+1)*w] = img_rotate
+
+    cv2.imwrite(os.path.join(test_dir, 'Rotate_' + str(iter_time).zfill(2) + '.png'), canvas)
+
 
 def aug_rotate(img, label, wmap):
     assert len(img.shape) == 2 and len(label.shape) == 2 and len(wmap.shape)
@@ -508,17 +520,50 @@ def cropping(img, label, wmap, input_size, output_size, is_extend=False):
         return img_crop, label_crop, wmap_crop
 
 
-def merge_preds(preds, idx, ori_size=512, output_size=388, test_dir=None, is_save=False, margin=5):
+def merge_rotated_preds(preds, img, iter_time, start, stop, num, test_dir, margin=5, is_save=False):
+    inv_preds = np.zeros((num, *preds[0].shape), dtype=np.float32)
+
+    for i, angle in enumerate(np.linspace(start=start, stop=stop, num=num, endpoint=False)):
+        pred = preds[i].copy()
+        inv_angle = 360. - angle
+        inv_preds[i] = rotate(input=pred, angle=inv_angle, axes=(0, 1), reshape=False, order=0, mode='constant', cval=0.)
+
+    y_pred = np.zeros_like(inv_preds[0])
+    for i in range(num):
+        y_pred += inv_preds[i]
+
+    y_pred_cls = np.uint8(np.argmax(y_pred, axis=2) * 255.)
+
+    if is_save:
+        h, w = preds[0].shape[0], preds[0].shape[1]
+        canvas = np.zeros((3*margin+2*h, (num+2)*margin+(num+1)*w), dtype=np.uint8)
+
+        for i in range(num):
+            canvas[margin:margin+h, (i+1)*margin+i*w:(i+1)*margin+(i+1)*w] = np.uint(np.argmax(preds[i], axis=2) * 255.)
+            canvas[2*margin+h:2*margin+2*h, (i+1)*margin+i*w:(i+1)*margin+(i+1)*w] = np.uint(np.argmax(inv_preds[i], axis=2) * 255.)
+
+        canvas[2 * margin + h:2 * margin + 2 * h, (num+1) * margin + num * w:(num+1) * margin + (num + 1) * w] = y_pred_cls
+        cv2.imwrite(os.path.join(test_dir, 'Merge_' + str(iter_time).zfill(2) + '.png'), canvas)
+
+    canvas = np.hstack((img, y_pred_cls))
+    cv2.imwrite(os.path.join(test_dir, 'Pred_' + str(iter_time).zfill(2) + '.png'), canvas)
+
+    return y_pred_cls
+
+
+def merge_preds(preds, idx, ori_size=512, output_size=388, angle=0., test_dir=None, is_save=False, margin=5):
     result = np.zeros((ori_size, ori_size, 2), dtype=np.float32)
 
+    # Past four corners
     result[:output_size, :output_size] += preds[0]
     result[:output_size, -output_size:] += preds[1]
     result[-output_size:, :output_size] += preds[2]
     result[-output_size:, -output_size:] += preds[3]
 
-    result = np.argmax(result, axis=2)
-
     if is_save:
+        # Score to class
+        result_cls = np.argmax(result, axis=2)
+
         canvas = np.zeros((2*output_size+3*margin, 2*output_size+ori_size+4*margin), dtype=np.uint8)
 
         # Score to prediction class
@@ -529,10 +574,10 @@ def merge_preds(preds, idx, ori_size=512, output_size=388, test_dir=None, is_sav
         canvas[margin:margin+output_size, 2*margin+output_size:2*margin+2*output_size] = np.uint8(preds_cls[1] * 255.)
         canvas[2*margin+output_size:2*margin+2*output_size, margin:margin+output_size] = np.uint8(preds_cls[2] * 255.)
         canvas[2*margin+output_size:2*margin+2*output_size, 2*margin+output_size:2*margin+2*output_size] = np.uint8(preds_cls[3] * 255.)
-        canvas[margin:margin+ori_size, 3*margin+2*output_size:3*margin+2*output_size+ori_size] = np.uint8(result * 255.)
+        canvas[margin:margin+ori_size, 3*margin+2*output_size:3*margin+2*output_size+ori_size] = np.uint8(result_cls * 255.)
 
         # Save results
-        cv2.imwrite(os.path.join(test_dir, 'Pred_' + str(idx).zfill(2) + '.png'), canvas)
+        cv2.imwrite(os.path.join(test_dir, 'Merge_' + str(idx).zfill(2) + '_' + str(int(angle)).zfill(3) + '.png'), canvas)
 
     return result
 

@@ -10,6 +10,7 @@ import cv2
 import logging
 import numpy as np
 import tifffile as tiff
+from scipy.ndimage import rotate
 
 import utils as utils
 
@@ -85,6 +86,7 @@ class Dataset(object):
         for idx in range(self.num_test):
             img = self.test_imgs[idx]
             utils.test_imshow(img, idx, test_dir=test_dir)
+            utils.test_rotate(img, idx, test_dir=test_dir)
         print(' [!] Saving test data cropping to check U-net fundamentals!')
 
 
@@ -121,14 +123,17 @@ class Dataset(object):
 
         return self.zero_centering(x_batchs), (y_batchs / 255).astype(np.uint8), w_batchs
 
-    def test_batch(self, idx):
-        x_img = self.test_imgs[idx]
+    def test_batch(self, idx, angle):
+        x_img_ori = self.test_imgs[idx]
+
+        # Rotate inage
+        x_img = rotate(input=x_img_ori, angle=angle, axes=(0, 1), reshape=False, order=3, mode='reflect')
         x_batchs = utils.test_data_cropping(img=x_img,
                                             input_size=self.input_size,
                                             output_size=self.output_size,
                                             num_blocks=4)
 
-        return self.zero_centering(x_batchs)
+        return self.zero_centering(x_batchs), x_img_ori
 
     def zero_centering(self, imgs):
         return imgs - self.mean_value

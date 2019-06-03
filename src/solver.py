@@ -60,14 +60,14 @@ class Solver(object):
 
         return avg_acc, summary
 
-    def test(self, x, iter_time, test_dir):
+    def test(self, x, iter_time, angle, test_dir, is_save=False):
         feed = {
             self.model.inp_img: np.expand_dims(x, axis=3),
             self.model.keep_prob: 1.0
         }
 
         preds = self.sess.run(self.model.pred, feed_dict=feed)
-        pred = utils.merge_preds(preds, idx=iter_time, test_dir=test_dir, is_save=True)
+        pred = utils.merge_preds(preds, idx=iter_time, angle=angle, test_dir=test_dir, is_save=is_save)
 
         return pred
 
