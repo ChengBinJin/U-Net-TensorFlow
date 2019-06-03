@@ -22,10 +22,10 @@ tf.flags.DEFINE_integer('batch_size', 4, 'batch size for one iteration, default:
 tf.flags.DEFINE_bool('is_train', True, 'training or inference mode, default: True')
 tf.flags.DEFINE_float('learning_rate', 1e-3, 'initial learning rate for optimizer, default: 0.001')
 tf.flags.DEFINE_float('weight_decay', 1e-4, 'weight decay for model to handle overfitting, default: 0.0001')
-tf.flags.DEFINE_integer('iters', 120, 'number of iterations for one epoch, default: 20,000')
+tf.flags.DEFINE_integer('iters', 20000, 'number of iterations for one epoch, default: 20,000')
 tf.flags.DEFINE_integer('print_freq', 10, 'print frequency for loss information, default: 10')
-tf.flags.DEFINE_integer('sample_freq', 10, 'sample frequence for checking qualitative evaluation, default: 100')
-tf.flags.DEFINE_integer('eval_freq', 20, 'evaluation frequency for batch accuracy, default: 200')
+tf.flags.DEFINE_integer('sample_freq', 100, 'sample frequence for checking qualitative evaluation, default: 100')
+tf.flags.DEFINE_integer('eval_freq', 200, 'evaluation frequency for batch accuracy, default: 200')
 tf.flags.DEFINE_string('load_model', None, 'folder of saved model that you wish to continue training '
                                            '(e.g. 20190524-1606), default: None')
 
@@ -178,7 +178,7 @@ def test(data, solver, saver, model_dir, test_dir, start=0, stop=360, num=7):
             y_preds[i] = solver.test(x_batchs, iter_time, angle, test_dir, is_save=True)
 
         # Merge rotated label images
-        y_pred = utils.merge_rotated_preds(y_preds, x_ori_img, iter_time, start, stop, num, test_dir, is_save=True)
+        y_pred = utils.merge_rotated_preds(y_preds, x_ori_img, iter_time, start, stop, num, test_dir)
 
 
 def save_model(saver, solver, model_dir, iter_time, best_acc):
