@@ -5,8 +5,6 @@
 # Email: sbkim0407@gmail.com
 # ---------------------------------------------------------
 import os
-import sys
-import cv2
 import logging
 import numpy as np
 import tifffile as tiff

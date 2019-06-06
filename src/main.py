@@ -5,9 +5,7 @@
 # Email: sbkim0407@gmail.com
 # ---------------------------------------------------------
 import os
-import sys
 import logging
-import cv2
 import numpy as np
 import tensorflow as tf
 from datetime import datetime
