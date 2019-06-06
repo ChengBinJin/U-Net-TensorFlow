@@ -45,7 +45,7 @@ def release_handles(logger, file_handler, stream_handler):
     logger.removeHandler(stream_handler)
 
 
-def make_folders(is_train, cur_time=None):
+def make_folders(is_train=True, cur_time=None):
     if is_train:
         model_dir = os.path.join('model', '{}'.format(cur_time))
         log_dir = os.path.join('logs', '{}'.format(cur_time))
@@ -61,14 +61,14 @@ def make_folders(is_train, cur_time=None):
         if not os.path.isdir(sample_dir):
             os.makedirs(sample_dir)
 
-        if not os.path.isdir(test_dir):
-            os.makedirs(test_dir)
-
     else:
         model_dir = os.path.join('model', '{}'.format(cur_time))
         log_dir = os.path.join('logs', '{}'.format(cur_time))
         sample_dir = os.path.join('sample', '{}'.format(cur_time))
         test_dir = os.path.join('test', '{}'.format(cur_time))
+
+        if not os.path.isdir(test_dir):
+            os.makedirs(test_dir)
 
     return model_dir, log_dir, sample_dir, test_dir
 

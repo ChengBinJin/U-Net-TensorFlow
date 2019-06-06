@@ -32,6 +32,8 @@ class Model(object):
             self._build_net()
 
         self._tensorboard()
+        tf_utils.show_all_variables(logger=self.logger if self.is_train else None)
+
 
     def _build_net(self):
         # Input placeholders

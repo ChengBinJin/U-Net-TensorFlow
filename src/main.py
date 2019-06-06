@@ -143,7 +143,7 @@ def train(data, solver, saver, model_dir, log_dir, sample_dir):
         if np.mod(iter_time, FLAGS.eval_freq) == 0:
             x_batch, y_batch, w_batch = data.random_batch(batch_size=FLAGS.batch_size * 20,
                                                           idx=np.random.randint(low=0, high=FLAGS.iters))
-            acc, summary = solver.evalate(x_batch, y_batch, batch_size=FLAGS.batch_size, is_train=True)
+            acc, summary = solver.evalate(x_batch, y_batch, batch_size=FLAGS.batch_size)
             print('Evaluation! \tAcc: {:.3f} \tBest Acc: {:.3f}'.format(acc, best_acc))
 
             # Write to tensorboard
@@ -178,7 +178,7 @@ def test(data, solver, saver, model_dir, test_dir, start=0, stop=360, num=7):
             y_preds[i] = solver.test(x_batchs, iter_time, angle, test_dir, is_save=True)
 
         # Merge rotated label images
-        y_pred = utils.merge_rotated_preds(y_preds, x_ori_img, iter_time, start, stop, num, test_dir)
+        y_pred = utils.merge_rotated_preds(y_preds, x_ori_img, iter_time, start, stop, num, test_dir, is_save=True)
 
 
 def save_model(saver, solver, model_dir, iter_time, best_acc):
