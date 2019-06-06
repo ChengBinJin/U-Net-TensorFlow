@@ -5,7 +5,9 @@
 # Email: sbkim0407@gmail.com
 # ---------------------------------------------------------
 import os
+import sys
 import logging
+import cv2
 import numpy as np
 import tensorflow as tf
 from datetime import datetime
@@ -178,7 +180,7 @@ def test(data, solver, saver, model_dir, test_dir, start=0, stop=360, num=7):
             y_preds[i] = solver.test(x_batchs, iter_time, angle, test_dir, is_save=True)
 
         # Merge rotated label images
-        y_pred = utils.merge_rotated_preds(y_preds, x_ori_img, iter_time, start, stop, num, test_dir, is_save=True)
+        utils.merge_rotated_preds(y_preds, x_ori_img, iter_time, start, stop, num, test_dir, is_save=True)
 
 
 def save_model(saver, solver, model_dir, iter_time, best_acc):

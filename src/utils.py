@@ -81,6 +81,7 @@ def imshow(img, label, wmap, idx, alpha=0.6, delay=1, log_dir=None, show=False):
     if len(img.shape) == 2:
         img = np.dstack((img, img, img))
 
+    # Convert to pseudo color map from gray-scale image
     pseudo_label = None
     if len(label.shape) == 2:
         pseudo_label = pseudoColor(label)
@@ -92,7 +93,7 @@ def imshow(img, label, wmap, idx, alpha=0.6, delay=1, log_dir=None, show=False):
                               beta=beta,
                               gamma=0.0)
 
-    # Convert to pseudo color map from gray-scale image
+    # Weight-map
     wmap_color = cv2.applyColorMap(normalize_uint8(wmap), cv2.COLORMAP_JET)
 
     canvas = np.hstack((img, pseudo_label, overlap, wmap_color))
@@ -520,7 +521,7 @@ def cropping(img, label, wmap, input_size, output_size, is_extend=False):
         return img_crop, label_crop, wmap_crop
 
 
-def merge_rotated_preds(preds, img, iter_time, start, stop, num, test_dir, margin=5, is_save=False):
+def merge_rotated_preds(preds, img, iter_time, start, stop, num, test_dir, margin=5, alpha=0.6, is_save=False):
     inv_preds = np.zeros((num, *preds[0].shape), dtype=np.float32)
 
     for i, angle in enumerate(np.linspace(start=start, stop=stop, num=num, endpoint=False)):
@@ -545,8 +546,22 @@ def merge_rotated_preds(preds, img, iter_time, start, stop, num, test_dir, margi
         canvas[2 * margin + h:2 * margin + 2 * h, (num+1) * margin + num * w:(num+1) * margin + (num + 1) * w] = y_pred_cls
         cv2.imwrite(os.path.join(test_dir, 'Merge_' + str(iter_time).zfill(2) + '.png'), canvas)
 
-    canvas = np.hstack((img, y_pred_cls))
-    cv2.imwrite(os.path.join(test_dir, 'Pred_' + str(iter_time).zfill(2) + '.png'), canvas)
+    # pesudo color representation
+    pseudo_label = pseudoColor(y_pred_cls)
+    beta = 1. - alpha
+
+    img_3c = np.dstack((img, img, img))
+    overlap = cv2.addWeighted(src1=img_3c,
+                              alpha=alpha,
+                              src2=pseudo_label,
+                              beta=beta,
+                              gamma=0.0)
+
+    canvas01 = np.hstack((img_3c, overlap))
+    cv2.imwrite(os.path.join(test_dir, 'Pred1_' + str(iter_time).zfill(2) + '.png'), canvas01)
+
+    canvas02 = np.hstack((img, y_pred_cls))
+    cv2.imwrite(os.path.join(test_dir, 'Pred2_' + str(iter_time).zfill(2) + '.png'), canvas02)
 
     return y_pred_cls
 
