@@ -136,16 +136,11 @@ python main.py --is_train=False --load_model=folder/you/wish/to/test/e.g./201905
 Please refer to the above arguments.
 
 ### Tensorboard Visualization
-**Note:** Data loss, weighted data loss, regularization term, and total loss during training process.
+**Note:** The following figure shows data loss, weighted data loss, regularization term, and total loss during training process. The batch accuracy also is given in tensorboard.
 
 <p align='center'>
-  <img src="https://user-images.githubusercontent.com/37034031/59041514-b93fcb00-88b3-11e9-8b75-952c02024460.png" width=1000)
+  <img src="https://user-images.githubusercontent.com/37034031/59041940-8c3fe800-88b4-11e9-9d8a-a4c5345b6718.png" width=1000)
 </p>  
-
-**Note:** Batch accuracy during training.
-<p align='center'>
-  <img src="https://user-images.githubusercontent.com/37034031/59041563-d1afe580-88b3-11e9-98d8-b210847ac946.png" width=400)
-</p>    
 
 ### Citation
 ```
