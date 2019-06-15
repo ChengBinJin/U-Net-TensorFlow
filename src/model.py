@@ -219,12 +219,12 @@ class Model(object):
             global_step = tf.Variable(0, dtype=tf.float32, trainable=False)
             start_learning_rate = self.lr
             end_learning_rate = 0.
-            start_decay_stp = self.start_decay_step
+            start_decay_step = self.start_decay_step
             decay_steps = self.decay_steps
 
-            learning_rate = (tf.where(tf.greater_equal(global_step, start_decay_stp),
+            learning_rate = (tf.where(tf.greater_equal(global_step, start_decay_step),
                                       tf.train.polynomial_decay(start_learning_rate,
-                                                                global_step - start_decay_stp,
+                                                                global_step - start_decay_step,
                                                                 decay_steps, end_learning_rate, power=1.0),
                                       start_learning_rate))
             self.tb_lr = tf.summary.scalar('learning_rate', learning_rate)
