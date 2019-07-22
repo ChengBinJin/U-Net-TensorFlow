@@ -115,7 +115,7 @@ class Model(object):
                                          logger=self.logger)
 
         # Stage 5
-        s5_maxpool = tf_utils.max_pool(x=s4_conv2, name='s5_maxpool', logger=self.logger)
+        s5_maxpool = tf_utils.max_pool(x=s4_conv2_drop, name='s5_maxpool', logger=self.logger)
         s5_conv1 = tf_utils.conv2d(x=s5_maxpool, output_dim=self.conv_dims[8], k_h=3, k_w=3, d_h=1, d_w=1,
                                    padding='VALID', initializer='He', name='s5_conv1', logger=self.logger)
         s5_conv1 = tf_utils.relu(s5_conv1, name='relu_s5_conv1', logger=self.logger)
@@ -128,6 +128,8 @@ class Model(object):
         # Stage 6
         s6_deconv1 = tf_utils.deconv2d(x=s5_conv2_drop, output_dim=self.conv_dims[10], k_h=2, k_w=2, initializer='He',
                                        name='s6_deconv1', logger=self.logger)
+        s6_deconv1 = tf_utils.relu(s6_deconv1, name='relu_s6_deconv1', logger=self.logger)
+
         # Cropping
         h1, w1 = s4_conv2_drop.get_shape().as_list()[1:3]
         h2, w2 = s6_deconv1.get_shape().as_list()[1:3]
