@@ -247,3 +247,4 @@ class Model(object):
 
     def release_handles(self):
         utils.release_handles(self.logger, self.file_handler, self.stream_handler)
+
